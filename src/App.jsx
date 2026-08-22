@@ -40,6 +40,27 @@ function ShuffleIcon({ size = 18 }) {
   )
 }
 
+// Soft rounded list icon, same visual language as ShuffleIcon.
+function ListIcon({ size = 18 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <line x1="4" y1="12" x2="16" y2="12" />
+      <line x1="4" y1="17" x2="12" y2="17" />
+    </svg>
+  )
+}
+
 // Cross-fades through BG_IMAGES in order, looping back to the first.
 function BackgroundSlideshow() {
   const [index, setIndex] = useState(0)
@@ -161,7 +182,7 @@ function NoteListView({ notes, error, onAddClick }) {
           aria-label={displayMode === 'scatter' ? 'Xem dạng danh sách' : 'Xem ngẫu nhiên'}
           title={displayMode === 'scatter' ? 'Xem dạng danh sách' : 'Xem ngẫu nhiên'}
         >
-          {displayMode === 'scatter' ? '☰' : <ShuffleIcon />}
+          {displayMode === 'scatter' ? <ListIcon /> : <ShuffleIcon />}
         </button>
       </div>
 
