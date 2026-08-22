@@ -74,6 +74,27 @@ function NoteScatterCard({ note, index, total }) {
   )
 }
 
+// Add more entries here to expose new pages through the nav bar.
+const NAV_ITEMS = [{ key: 'notes', label: '📝 Ghi chú' }]
+
+function NavBar({ activeKey, onSelect }) {
+  return (
+    <nav className="navbar">
+      <div className="navbar-inner">
+        {NAV_ITEMS.map((item) => (
+          <button
+            key={item.key}
+            className={'nav-item' + (item.key === activeKey ? ' nav-item-active' : '')}
+            onClick={() => onSelect(item.key)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </nav>
+  )
+}
+
 function NoteListView({ notes, error, onAddClick }) {
   const [displayMode, setDisplayMode] = useState('scatter')
 
@@ -82,7 +103,7 @@ function NoteListView({ notes, error, onAddClick }) {
       <div className="list-header">
         <div>
           <h1>
-            <AvocadoIcon /> Súp Bơ
+            <AvocadoIcon size={44} /> Súp Bơ
           </h1>
           <p className="subtitle">Những note mọi người đã viết</p>
         </div>
@@ -215,17 +236,20 @@ export default function App() {
     return () => clearInterval(interval)
   }, [loadNotes, view])
 
-  if (view === 'create') {
-    return (
-      <NoteCreateView
-        onCancel={() => setView('list')}
-        onCreated={async () => {
-          await loadNotes()
-          setView('list')
-        }}
-      />
-    )
-  }
-
-  return <NoteListView notes={notes} error={error} onAddClick={() => setView('create')} />
+  return (
+    <>
+      <NavBar activeKey="notes" onSelect={() => setView('list')} />
+      {view === 'create' ? (
+        <NoteCreateView
+          onCancel={() => setView('list')}
+          onCreated={async () => {
+            await loadNotes()
+            setView('list')
+          }}
+        />
+      ) : (
+        <NoteListView notes={notes} error={error} onAddClick={() => setView('create')} />
+      )}
+    </>
+  )
 }
