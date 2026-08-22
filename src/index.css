@@ -170,11 +170,13 @@ body::before {
   max-width: 1100px;
   /* Center within the gap between the header bar and the FAB, not the
      full viewport (header height + 68px FAB clearance). Top padding is
-     0 because .list-header's min-height (--header-gap) IS the reserved
-     space between the header bar and the image. */
+     0 because .list-header's min-height (--header-gap) reserves the
+     header-to-image space; bottom padding matches --header-gap too so
+     it exactly equals the image-to-FAB space left by .notes-stage's
+     height formula, leaving no slack for the flex centering to shift. */
   min-height: calc(100vh - var(--header-h) - 68px);
   padding-top: 0;
-  padding-bottom: 32px;
+  padding-bottom: var(--header-gap);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -333,9 +335,10 @@ h1 {
 .notes-stage {
   position: relative;
   width: 100%;
-  /* Fills whatever's left of the viewport after the header, the
-     header-to-image gap, and the FAB clearance. */
-  height: calc(100vh - var(--header-h) - var(--header-gap) - 68px);
+  /* Fills the viewport minus header, FAB clearance, and TWO header-gaps
+     (one above the image, one below) so the image-to-FAB gap matches
+     the header-to-image gap. */
+  height: calc(100vh - var(--header-h) - var(--header-gap) * 2 - 68px);
   min-height: 260px;
   margin: 0 auto;
   display: flex;
