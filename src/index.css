@@ -64,6 +64,18 @@ h1 {
   cursor: default;
 }
 
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-secondary {
+  background: #fff !important;
+  color: #d6336c !important;
+  border: 1px solid #d6336c !important;
+}
+
 .error {
   color: #c0392b;
   text-align: center;
@@ -95,4 +107,43 @@ h1 {
   font-size: 0.85rem;
   color: #a08a9b;
   text-align: right;
+}
+
+.empty-state {
+  text-align: center;
+  color: #a08a9b;
+  margin-top: 40px;
+}
+
+.back-link {
+  background: none;
+  border: none;
+  color: #d6336c;
+  font-size: 1rem;
+  padding: 0;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+
+.fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #d6336c;
+  color: #fff;
+  border: none;
+  font-size: 1.8rem;
+  line-height: 1;
+  box-shadow: 0 4px 14px rgba(214, 51, 108, 0.45);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fab:hover {
+  background: #c2255c;
 }
