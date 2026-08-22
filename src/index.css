@@ -2,6 +2,16 @@
   box-sizing: border-box;
 }
 
+:root {
+  /* Rendered height of .app-header — single source of truth, several
+     other rules derive their sizing from it. Update if header
+     content/padding changes. */
+  --header-h: 76px;
+  /* Gap reserved between the header and the image, per note-list-header
+     row (subtitle + view-toggle button), = 1.5x the header's height. */
+  --header-gap: calc(var(--header-h) * 1.5);
+}
+
 body {
   margin: 0;
   font-family: 'Amatic SC', cursive;
@@ -115,7 +125,7 @@ body::before {
 .brand-title {
   font-family: 'Allura', cursive;
   font-weight: 700;
-  font-size: 1.9rem;
+  font-size: 2.6rem;
   color: #fff;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
@@ -159,10 +169,11 @@ body::before {
 .page-list {
   max-width: 1100px;
   /* Center within the gap between the header bar and the FAB, not the
-     full viewport (64px header + 68px FAB clearance). Bottom padding
-     matches the top so the centered content lines up with that gap's
-     midpoint instead of skewing toward the shorter side. */
-  min-height: calc(100vh - 64px - 68px);
+     full viewport (header height + 68px FAB clearance). Top padding is
+     0 because .list-header's min-height (--header-gap) IS the reserved
+     space between the header bar and the image. */
+  min-height: calc(100vh - var(--header-h) - 68px);
+  padding-top: 0;
   padding-bottom: 32px;
   display: flex;
   flex-direction: column;
@@ -174,8 +185,8 @@ body::before {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 0;
-  margin-bottom: 32px;
+  min-height: var(--header-gap);
+  margin: 0;
 }
 
 .list-header .subtitle {
@@ -321,8 +332,11 @@ h1 {
 
 .notes-stage {
   position: relative;
-  width: min(100%, 130vh);
-  aspect-ratio: 1 / 1;
+  width: 100%;
+  /* Fills whatever's left of the viewport after the header, the
+     header-to-image gap, and the FAB clearance. */
+  height: calc(100vh - var(--header-h) - var(--header-gap) - 68px);
+  min-height: 260px;
   margin: 0 auto;
   display: flex;
   align-items: center;
