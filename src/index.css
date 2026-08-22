@@ -5,7 +5,7 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  background: #fdf2f8;
+  background: #aed6f1;
   color: #3a2e39;
 }
 
@@ -54,6 +54,14 @@ h1 {
   margin-bottom: 4px;
   font-family: 'Pacifico', cursive;
   font-weight: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.list-header h1 {
+  justify-content: flex-start;
 }
 
 .subtitle {
