@@ -18,6 +18,29 @@ body {
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.25);
 }
 
+.app-header::before {
+  content: '';
+  position: absolute;
+  inset: -30px;
+  background-image: radial-gradient(circle at 12% 40%, #6fc0ec 0%, transparent 55%),
+    radial-gradient(circle at 40% 85%, #1b5e85 0%, transparent 50%),
+    radial-gradient(circle at 65% 15%, #ffffff 0%, transparent 42%),
+    radial-gradient(circle at 85% 70%, #4aa3d6 0%, transparent 55%),
+    radial-gradient(circle at 30% 10%, #ffffff 0%, transparent 35%);
+  filter: blur(30px);
+  opacity: 0.85;
+  animation: water-drift 12s ease-in-out infinite alternate;
+}
+
+@keyframes water-drift {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(-2%, 3%) scale(1.08);
+  }
+}
+
 .app-header::after {
   content: '';
   position: absolute;

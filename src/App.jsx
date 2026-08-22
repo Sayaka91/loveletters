@@ -9,6 +9,30 @@ function formatTime(ms) {
   return new Date(ms).toLocaleString('vi-VN')
 }
 
+// Monochrome shuffle icon — inherits `color` so it stays on-theme (blue/white)
+// instead of a multicolor emoji.
+function ShuffleIcon({ size = 18 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="16 3 21 3 21 8" />
+      <line x1="4" y1="20" x2="21" y2="3" />
+      <polyline points="21 16 21 21 16 21" />
+      <line x1="15" y1="15" x2="21" y2="21" />
+      <line x1="4" y1="4" x2="9" y2="9" />
+    </svg>
+  )
+}
+
 // Cross-fades through BG_IMAGES in order, looping back to the first.
 function BackgroundSlideshow() {
   const [index, setIndex] = useState(0)
@@ -129,7 +153,7 @@ function NoteListView({ notes, error, onAddClick }) {
           aria-label={displayMode === 'scatter' ? 'Xem dạng danh sách' : 'Xem ngẫu nhiên'}
           title={displayMode === 'scatter' ? 'Xem dạng danh sách' : 'Xem ngẫu nhiên'}
         >
-          {displayMode === 'scatter' ? '☰' : '🔀'}
+          {displayMode === 'scatter' ? '☰' : <ShuffleIcon />}
         </button>
       </div>
 
