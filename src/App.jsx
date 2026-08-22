@@ -102,9 +102,12 @@ function AppHeader({ activePage, onNavigate }) {
   )
 }
 
-function AboutView() {
+function AboutView({ onBack }) {
   return (
     <div className="page">
+      <button className="back-link" onClick={onBack}>
+        ← Quay lại
+      </button>
       <h1>Giới thiệu</h1>
       <div className="about-card">
         <p>
@@ -264,7 +267,7 @@ export default function App() {
     <>
       <AppHeader activePage={page} onNavigate={handleNavigate} />
       {page === 'about' ? (
-        <AboutView />
+        <AboutView onBack={() => handleNavigate('notes')} />
       ) : view === 'create' ? (
         <NoteCreateView
           onCancel={() => setView('list')}
