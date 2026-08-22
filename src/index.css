@@ -48,11 +48,12 @@ body::before {
   content: '';
   position: absolute;
   inset: -30px;
-  background-image: radial-gradient(circle at 12% 40%, #4aa3d6 0%, transparent 55%),
-    radial-gradient(circle at 40% 85%, #0d3a52 0%, transparent 50%),
-    radial-gradient(circle at 65% 15%, #ffffff 0%, transparent 42%),
-    radial-gradient(circle at 85% 70%, #2e86c1 0%, transparent 55%),
-    radial-gradient(circle at 30% 10%, #ffffff 0%, transparent 35%);
+  bottom: 30px;
+  background-image: radial-gradient(circle at 12% 35%, #4aa3d6 0%, transparent 55%),
+    radial-gradient(circle at 40% 55%, #0d3a52 0%, transparent 40%),
+    radial-gradient(circle at 65% 10%, #ffffff 0%, transparent 42%),
+    radial-gradient(circle at 85% 45%, #2e86c1 0%, transparent 50%),
+    radial-gradient(circle at 30% 5%, #ffffff 0%, transparent 35%);
   filter: blur(30px);
   opacity: 0.8;
   animation: water-drift 12s ease-in-out infinite alternate;
@@ -130,8 +131,9 @@ body::before {
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.35);
   color: #f5f0ff;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-family: 'Amatic SC', cursive;
+  font-size: 1.1rem;
+  font-weight: 700;
   padding: 8px 16px;
   border-radius: 20px;
   cursor: pointer;
