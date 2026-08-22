@@ -33,38 +33,6 @@ function BackgroundSlideshow() {
   )
 }
 
-function AvocadoIcon({ size = 34 }) {
-  return (
-    <svg
-      width={size}
-      height={size * 1.12}
-      viewBox="0 0 100 112"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path d="M42 10 C40 5 44 1 48 3 C52 5 51 12 48 16 L44 18 Z" fill="#8a6b3f" />
-      <path d="M46 8 C38 1 28 6 30 13 C32 19 40 17 45 12 Z" fill="#7fb069" />
-      <path
-        d="M50 12
-           C25 12 12 40 12 64
-           C12 92 28 108 50 108
-           C72 108 88 92 88 64
-           C88 40 75 12 50 12 Z"
-        fill="#eef7df"
-        stroke="#9cc26b"
-        strokeWidth="4"
-      />
-      <ellipse cx="50" cy="74" rx="23" ry="27" fill="#8a4b32" />
-      <ellipse cx="42" cy="64" rx="8" ry="6" fill="#a5613f" opacity="0.6" />
-      <circle cx="39" cy="50" r="2.6" fill="#3a2e39" />
-      <circle cx="61" cy="50" r="2.6" fill="#3a2e39" />
-      <ellipse cx="30" cy="57" rx="5" ry="3.2" fill="#f5a8a8" opacity="0.75" />
-      <ellipse cx="70" cy="57" rx="5" ry="3.2" fill="#f5a8a8" opacity="0.75" />
-      <path d="M41 58 Q50 65 59 58" stroke="#3a2e39" strokeWidth="2.4" fill="none" strokeLinecap="round" />
-    </svg>
-  )
-}
-
 // Deterministic pseudo-random in [0, 1) so each note keeps the same scatter
 // position/rotation across re-renders and polling refreshes.
 function seededRandom(seed) {
@@ -111,9 +79,7 @@ function AppHeader({ activePage, onNavigate }) {
     <header className="app-header">
       <div className="app-header-inner">
         <button type="button" className="brand-button" onClick={() => onNavigate('notes')}>
-          <span className="brand-title">
-            <AvocadoIcon size={38} /> Súp Bơ
-          </span>
+          <span className="brand-title">Súp Bơ</span>
         </button>
         <nav className="nav-options">
           {NAV_ITEMS.map((item) => (
@@ -134,8 +100,8 @@ function AppHeader({ activePage, onNavigate }) {
 function AboutView({ onBack }) {
   return (
     <div className="page">
-      <button className="back-link" onClick={onBack}>
-        ← Quay lại
+      <button className="back-link" onClick={onBack} aria-label="Quay lại">
+        ←
       </button>
       <h1>Giới thiệu</h1>
       <div className="about-card">
@@ -160,8 +126,10 @@ function NoteListView({ notes, error, onAddClick }) {
         <button
           className="all-btn"
           onClick={() => setDisplayMode((mode) => (mode === 'scatter' ? 'list' : 'scatter'))}
+          aria-label={displayMode === 'scatter' ? 'Xem dạng danh sách' : 'Xem ngẫu nhiên'}
+          title={displayMode === 'scatter' ? 'Xem dạng danh sách' : 'Xem ngẫu nhiên'}
         >
-          {displayMode === 'scatter' ? 'All' : 'Ngẫu nhiên'}
+          {displayMode === 'scatter' ? '☰' : '🔀'}
         </button>
       </div>
 
@@ -230,8 +198,8 @@ function NoteCreateView({ onCancel, onCreated }) {
 
   return (
     <div className="page">
-      <button className="back-link" onClick={onCancel}>
-        ← Quay lại
+      <button className="back-link" onClick={onCancel} aria-label="Quay lại">
+        ←
       </button>
       <h1>Viết note mới</h1>
 
