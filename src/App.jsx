@@ -1,10 +1,36 @@
 import { useCallback, useEffect, useState } from 'react'
 
 const POLL_INTERVAL_MS = 5000
+const BG_SLIDE_INTERVAL_MS = 5000
+const BG_IMAGES = ['/photo/bg1.jpg', '/photo/bg2.jpg', '/photo/bg3.jpg', '/photo/bg4.jpg', '/photo/bg5.jpg']
 
 function formatTime(ms) {
   if (!ms) return ''
   return new Date(ms).toLocaleString('vi-VN')
+}
+
+// Cross-fades through BG_IMAGES in order, looping back to the first.
+function BackgroundSlideshow() {
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % BG_IMAGES.length)
+    }, BG_SLIDE_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <div className="bg-slideshow" aria-hidden="true">
+      {BG_IMAGES.map((src, i) => (
+        <div
+          key={src}
+          className="bg-slide"
+          style={{ backgroundImage: `url(${src})`, opacity: i === index ? 1 : 0 }}
+        />
+      ))}
+    </div>
+  )
 }
 
 function AvocadoIcon({ size = 34 }) {
@@ -142,24 +168,27 @@ function NoteListView({ notes, error, onAddClick }) {
         <p className="empty-state">Chưa có note nào. Hãy là người đầu tiên viết!</p>
       )}
 
-      {displayMode === 'scatter' ? (
-        <div className="scatter-board">
-          {notes.map((note, index) => (
-            <NoteScatterCard key={note.id} note={note} index={index} total={notes.length} />
-          ))}
-        </div>
-      ) : (
-        <ul className="note-list note-list-scroll">
-          {notes.map((note) => (
-            <li key={note.id} className="note-card">
-              <p className="note-content">{note.content}</p>
-              <p className="note-meta">
-                — {note.author} · {formatTime(note.createdAt)}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="notes-stage">
+        <BackgroundSlideshow />
+        {displayMode === 'scatter' ? (
+          <div className="scatter-board">
+            {notes.map((note, index) => (
+              <NoteScatterCard key={note.id} note={note} index={index} total={notes.length} />
+            ))}
+          </div>
+        ) : (
+          <ul className="note-list note-list-scroll">
+            {notes.map((note) => (
+              <li key={note.id} className="note-card">
+                <p className="note-content">{note.content}</p>
+                <p className="note-meta">
+                  — {note.author} · {formatTime(note.createdAt)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <button className="fab" onClick={onAddClick} aria-label="Thêm note" title="Thêm note">
         +

@@ -245,10 +245,41 @@ h1 {
   max-height: 65vh;
   overflow-y: auto;
   padding-right: 4px;
+  position: relative;
+  z-index: 1;
+}
+
+.notes-stage {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.bg-slideshow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.bg-slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 1.2s ease-in-out;
+}
+
+.bg-slideshow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(214, 234, 248, 0.4);
 }
 
 .scatter-board {
   position: relative;
+  z-index: 1;
   min-height: 65vh;
 }
 
