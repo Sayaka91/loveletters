@@ -35,8 +35,8 @@ body {
 .all-btn {
   flex-shrink: 0;
   background: #fff;
-  color: #d6336c;
-  border: 1px solid #d6336c;
+  color: #2e86c1;
+  border: 1px solid #2e86c1;
   padding: 8px 18px;
   border-radius: 20px;
   font-size: 0.9rem;
@@ -46,7 +46,7 @@ body {
 }
 
 .all-btn:hover {
-  background: #fdecf1;
+  background: #eaf4fb;
 }
 
 h1 {
@@ -230,12 +230,12 @@ h1 {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: #d6336c;
+  background: #2e86c1;
   color: #fff;
   border: none;
   font-size: 1.8rem;
   line-height: 1;
-  box-shadow: 0 4px 14px rgba(214, 51, 108, 0.45);
+  box-shadow: 0 4px 14px rgba(46, 134, 193, 0.45);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -243,5 +243,5 @@ h1 {
 }
 
 .fab:hover {
-  background: #c2255c;
+  background: #21618c;
 }
