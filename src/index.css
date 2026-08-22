@@ -366,7 +366,7 @@ h1 {
 }
 
 .scatter-card .note-content {
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   margin: 0 0 8px;
 }
 
@@ -394,6 +394,7 @@ h1 {
   white-space: pre-wrap;
   word-break: break-word;
   color: #1b4f72;
+  font-size: 1.4rem;
 }
 
 .note-meta {
