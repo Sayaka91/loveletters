@@ -110,8 +110,12 @@ function NoteScatterCard({ note, index, total }) {
   // calc() keeps the card within [2%, 98%] of the container regardless of
   // viewport size, since --card-w/--card-h (fixed px, overridden per
   // breakpoint in CSS) are subtracted before scaling by the percentage.
-  const left = `calc(2% + ${rLeft.toFixed(4)} * (96% - var(--card-w)))`
-  const top = `calc(2% + ${rTop.toFixed(4)} * (96% - var(--card-h)))`
+  // The rotation (up to ±8deg) enlarges the card's actual on-screen
+  // bounding box beyond its own width/height — cos(8deg)+sin(8deg) ≈
+  // 1.13 — so a 1.15x safety factor is applied to the reserved size to
+  // keep the rotated box from poking past the container edge.
+  const left = `calc(2% + ${rLeft.toFixed(4)} * (96% - var(--card-w) * 1.15))`
+  const top = `calc(2% + ${rTop.toFixed(4)} * (96% - var(--card-h) * 1.15))`
 
   return (
     <div className="scatter-card" style={{ left, top, transform: `rotate(${rotate}deg)`, opacity, zIndex }}>
