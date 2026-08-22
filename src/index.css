@@ -158,6 +158,10 @@ body::before {
 
 .page-list {
   max-width: 1100px;
+  min-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .list-header {
