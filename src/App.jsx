@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 const POLL_INTERVAL_MS = 5000
-const BG_SLIDE_INTERVAL_MS = 5000
+const BG_SLIDE_INTERVAL_MS = 8000
 const BG_IMAGES = ['/photo/bg1.jpg', '/photo/bg2.jpg', '/photo/bg3.jpg', '/photo/bg4.jpg', '/photo/bg5.jpg']
 
 function formatTime(ms) {

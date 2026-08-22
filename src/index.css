@@ -284,7 +284,7 @@ h1 {
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: min(100%, 100vh);
+  width: min(100%, 130vh);
   aspect-ratio: 1 / 1;
   border-radius: 16px;
   overflow: hidden;
@@ -310,7 +310,7 @@ h1 {
 .scatter-board {
   position: relative;
   z-index: 1;
-  min-height: min(85vh, 100vw);
+  min-height: min(110vh, 130vw);
 }
 
 .scatter-card {
