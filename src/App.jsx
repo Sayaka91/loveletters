@@ -79,19 +79,22 @@ function seededRandom(seed) {
 }
 
 function NoteScatterCard({ note, index, total }) {
-  const left = 4 + seededRandom(note.id + ':left') * 72
-  const top = 4 + seededRandom(note.id + ':top') * 72
+  const rLeft = seededRandom(note.id + ':left')
+  const rTop = seededRandom(note.id + ':top')
   const rotate = (seededRandom(note.id + ':rot') * 16 - 8).toFixed(1)
   // Newest note (index 0) is fully opaque and on top; older notes fade and
   // sit further back in the stack.
   const opacity = Math.max(0.3, 1 - index * 0.12)
   const zIndex = total - index
 
+  // calc() keeps the card within [2%, 98%] of the container regardless of
+  // viewport size, since --card-w/--card-h (fixed px, overridden per
+  // breakpoint in CSS) are subtracted before scaling by the percentage.
+  const left = `calc(2% + ${rLeft.toFixed(4)} * (96% - var(--card-w)))`
+  const top = `calc(2% + ${rTop.toFixed(4)} * (96% - var(--card-h)))`
+
   return (
-    <div
-      className="scatter-card"
-      style={{ left: `${left}%`, top: `${top}%`, transform: `rotate(${rotate}deg)`, opacity, zIndex }}
-    >
+    <div className="scatter-card" style={{ left, top, transform: `rotate(${rotate}deg)`, opacity, zIndex }}>
       <p className="note-content">{note.content}</p>
       <p className="note-meta">
         — {note.author} · {formatTime(note.createdAt)}

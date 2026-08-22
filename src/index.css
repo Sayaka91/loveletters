@@ -251,13 +251,17 @@ h1 {
 
 .notes-stage {
   position: relative;
-  border-radius: 16px;
-  overflow: hidden;
 }
 
 .bg-slideshow {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 420px);
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+  overflow: hidden;
   z-index: 0;
 }
 
@@ -284,10 +288,12 @@ h1 {
 }
 
 .scatter-card {
+  --card-w: 200px;
+  --card-h: 150px;
   position: absolute;
-  width: 200px;
+  width: var(--card-w);
   min-height: 110px;
-  max-height: 150px;
+  max-height: var(--card-h);
   background: #f0f8fd;
   border-radius: 10px;
   padding: 12px 14px;
@@ -319,8 +325,8 @@ h1 {
 
 @media (max-width: 600px) {
   .scatter-card {
-    width: 150px;
-    max-height: 130px;
+    --card-w: 150px;
+    --card-h: 130px;
   }
 }
 
