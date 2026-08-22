@@ -94,13 +94,17 @@ h1 {
 
 .note-form button {
   align-self: flex-end;
-  background: #d6336c;
+  background: #2e86c1;
   color: #fff;
   border: none;
   padding: 10px 20px;
   border-radius: 8px;
   font-size: 1rem;
   cursor: pointer;
+}
+
+.note-form button:hover:not(:disabled) {
+  background: #21618c;
 }
 
 .note-form button:disabled {
@@ -116,8 +120,12 @@ h1 {
 
 .btn-secondary {
   background: #fff !important;
-  color: #d6336c !important;
-  border: 1px solid #d6336c !important;
+  color: #2e86c1 !important;
+  border: 1px solid #2e86c1 !important;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #eaf4fb !important;
 }
 
 .error {
@@ -216,7 +224,7 @@ h1 {
 .back-link {
   background: none;
   border: none;
-  color: #d6336c;
+  color: #2e86c1;
   font-size: 1rem;
   padding: 0;
   margin-bottom: 16px;
