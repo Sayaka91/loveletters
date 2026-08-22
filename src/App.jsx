@@ -154,7 +154,7 @@ function NoteListView({ notes, error, onAddClick }) {
   return (
     <div className="page page-list">
       <div className="list-header">
-        <p className="subtitle">Những note mọi người đã viết</p>
+        <p className="subtitle">Để lại dấu chân ở đây nhé!</p>
         <button
           className="all-btn"
           onClick={() => setDisplayMode((mode) => (mode === 'scatter' ? 'list' : 'scatter'))}
