@@ -3,10 +3,17 @@ import { useCallback, useEffect, useState } from 'react'
 const POLL_INTERVAL_MS = 5000
 const BG_SLIDE_INTERVAL_MS = 8000
 const BG_IMAGES = ['/photo/bg1.jpg', '/photo/bg2.jpg', '/photo/bg3.jpg', '/photo/bg4.jpg', '/photo/bg5.jpg']
+const VISIBLE_WINDOW_MS = 24 * 60 * 60 * 1000
 
-function formatTime(ms) {
-  if (!ms) return ''
-  return new Date(ms).toLocaleString('vi-VN')
+// Elapsed time from note creation to now, e.g. "5m", "1h", "1h30m".
+function formatElapsed(createdAtMs) {
+  if (!createdAtMs) return ''
+  const totalMinutes = Math.max(0, Math.floor((Date.now() - createdAtMs) / 60000))
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours === 0) return `${minutes}m`
+  if (minutes === 0) return `${hours}h`
+  return `${hours}h${minutes}m`
 }
 
 // Monochrome shuffle icon — inherits `color` so it stays on-theme (blue/white)
@@ -89,7 +96,7 @@ function NoteScatterCard({ note, index, total }) {
     <div className="scatter-card" style={{ left, top, transform: `rotate(${rotate}deg)`, opacity, zIndex }}>
       <p className="note-content">{note.content}</p>
       <p className="note-meta">
-        — {note.author} · {formatTime(note.createdAt)}
+        — {note.author} · {formatElapsed(note.createdAt)}
       </p>
     </div>
   )
@@ -142,6 +149,7 @@ function AboutView({ onBack }) {
 
 function NoteListView({ notes, error, onAddClick }) {
   const [displayMode, setDisplayMode] = useState('scatter')
+  const visibleNotes = notes.filter((note) => Date.now() - note.createdAt <= VISIBLE_WINDOW_MS)
 
   return (
     <div className="page page-list">
@@ -159,25 +167,25 @@ function NoteListView({ notes, error, onAddClick }) {
 
       {error && <p className="error">{error}</p>}
 
-      {notes.length === 0 && !error && (
-        <p className="empty-state">Chưa có note nào. Hãy là người đầu tiên viết!</p>
+      {visibleNotes.length === 0 && !error && (
+        <p className="empty-state">Chưa có note nào trong 24h qua. Hãy là người đầu tiên viết!</p>
       )}
 
       <div className="notes-stage">
         <BackgroundSlideshow />
         {displayMode === 'scatter' ? (
           <div className="scatter-board">
-            {notes.map((note, index) => (
-              <NoteScatterCard key={note.id} note={note} index={index} total={notes.length} />
+            {visibleNotes.map((note, index) => (
+              <NoteScatterCard key={note.id} note={note} index={index} total={visibleNotes.length} />
             ))}
           </div>
         ) : (
           <ul className="note-list note-list-scroll">
-            {notes.map((note) => (
+            {visibleNotes.map((note) => (
               <li key={note.id} className="note-card">
                 <p className="note-content">{note.content}</p>
                 <p className="note-meta">
-                  — {note.author} · {formatTime(note.createdAt)}
+                  — {note.author} · {formatElapsed(note.createdAt)}
                 </p>
               </li>
             ))}
