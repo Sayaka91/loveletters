@@ -49,7 +49,7 @@ function NoteListView({ notes, error, onAddClick }) {
     <div className="page page-list">
       <div className="list-header">
         <div>
-          <h1>💌 Love Letter</h1>
+          <h1>🥑 Súp Bơ</h1>
           <p className="subtitle">Những note mọi người đã viết</p>
         </div>
         <button
