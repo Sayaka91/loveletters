@@ -15,7 +15,6 @@ body {
   z-index: 1000;
   overflow: hidden;
   background-color: #1b5e85;
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
 }
 
 .app-header::before {
