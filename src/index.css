@@ -258,7 +258,7 @@ h1 {
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: min(100%, 420px);
+  width: min(100%, 100vh);
   aspect-ratio: 1 / 1;
   border-radius: 16px;
   overflow: hidden;
@@ -284,16 +284,16 @@ h1 {
 .scatter-board {
   position: relative;
   z-index: 1;
-  min-height: 65vh;
+  min-height: min(85vh, 100vw);
 }
 
 .scatter-card {
   --card-w: 200px;
-  --card-h: 150px;
+  --card-h: var(--card-w);
   position: absolute;
   width: var(--card-w);
-  min-height: 110px;
-  max-height: var(--card-h);
+  height: auto;
+  max-height: var(--card-w);
   background: #f0f8fd;
   border-radius: 10px;
   padding: 12px 14px;
@@ -313,10 +313,6 @@ h1 {
 .scatter-card .note-content {
   font-size: 0.9rem;
   margin: 0 0 8px;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .scatter-card .note-meta {
@@ -326,7 +322,6 @@ h1 {
 @media (max-width: 600px) {
   .scatter-card {
     --card-w: 150px;
-    --card-h: 130px;
   }
 }
 
