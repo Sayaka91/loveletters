@@ -74,24 +74,47 @@ function NoteScatterCard({ note, index, total }) {
   )
 }
 
-// Add more entries here to expose new pages through the nav bar.
-const NAV_ITEMS = [{ key: 'notes', label: '📝 Ghi chú' }]
+// Add more entries here to expose new pages as options next to the brand title.
+const NAV_ITEMS = [{ key: 'about', label: 'Giới thiệu' }]
 
-function NavBar({ activeKey, onSelect }) {
+function AppHeader({ activePage, onNavigate }) {
   return (
-    <nav className="navbar">
-      <div className="navbar-inner">
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.key}
-            className={'nav-item' + (item.key === activeKey ? ' nav-item-active' : '')}
-            onClick={() => onSelect(item.key)}
-          >
-            {item.label}
-          </button>
-        ))}
+    <header className="app-header">
+      <div className="app-header-inner">
+        <button type="button" className="brand-button" onClick={() => onNavigate('notes')}>
+          <span className="brand-title">
+            <AvocadoIcon size={38} /> Súp Bơ
+          </span>
+        </button>
+        <nav className="nav-options">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.key}
+              className={'nav-item' + (item.key === activePage ? ' nav-item-active' : '')}
+              onClick={() => onNavigate(item.key)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
       </div>
-    </nav>
+    </header>
+  )
+}
+
+function AboutView() {
+  return (
+    <div className="page">
+      <h1>Giới thiệu</h1>
+      <div className="about-card">
+        <p>
+          <strong>Tên:</strong> (sẽ bổ sung)
+        </p>
+        <p>
+          <strong>Thông tin liên hệ:</strong> (sẽ bổ sung)
+        </p>
+      </div>
+    </div>
   )
 }
 
@@ -101,12 +124,7 @@ function NoteListView({ notes, error, onAddClick }) {
   return (
     <div className="page page-list">
       <div className="list-header">
-        <div>
-          <h1>
-            <AvocadoIcon size={44} /> Súp Bơ
-          </h1>
-          <p className="subtitle">Những note mọi người đã viết</p>
-        </div>
+        <p className="subtitle">Những note mọi người đã viết</p>
         <button
           className="all-btn"
           onClick={() => setDisplayMode((mode) => (mode === 'scatter' ? 'list' : 'scatter'))}
@@ -214,6 +232,7 @@ function NoteCreateView({ onCancel, onCreated }) {
 }
 
 export default function App() {
+  const [page, setPage] = useState('notes')
   const [view, setView] = useState('list')
   const [notes, setNotes] = useState([])
   const [error, setError] = useState('')
@@ -231,15 +250,22 @@ export default function App() {
 
   useEffect(() => {
     loadNotes()
-    if (view !== 'list') return
+    if (page !== 'notes' || view !== 'list') return
     const interval = setInterval(loadNotes, POLL_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [loadNotes, view])
+  }, [loadNotes, page, view])
+
+  function handleNavigate(key) {
+    setPage(key)
+    if (key === 'notes') setView('list')
+  }
 
   return (
     <>
-      <NavBar activeKey="notes" onSelect={() => setView('list')} />
-      {view === 'create' ? (
+      <AppHeader activePage={page} onNavigate={handleNavigate} />
+      {page === 'about' ? (
+        <AboutView />
+      ) : view === 'create' ? (
         <NoteCreateView
           onCancel={() => setView('list')}
           onCreated={async () => {
