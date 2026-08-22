@@ -151,8 +151,8 @@ body {
   height: 40px;
   padding: 0;
   background: #fff;
-  color: #2e86c1;
-  border: 1px solid #2e86c1;
+  color: #1b5e85;
+  border: 1px solid #1b5e85;
   border-radius: 50%;
   font-size: 1.15rem;
   line-height: 1;
@@ -163,7 +163,7 @@ body {
 }
 
 .all-btn:hover {
-  background: #eaf4fb;
+  background: #e4eff4;
 }
 
 h1 {
@@ -398,12 +398,12 @@ h1 {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: #2e86c1;
+  background: #1b5e85;
   color: #fff;
   border: none;
   font-size: 1.8rem;
   line-height: 1;
-  box-shadow: 0 4px 14px rgba(46, 134, 193, 0.45);
+  box-shadow: 0 4px 14px rgba(27, 94, 133, 0.45);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -411,7 +411,7 @@ h1 {
 }
 
 .fab:hover {
-  background: #21618c;
+  background: #123f52;
 }
 
 .about-card {
