@@ -158,7 +158,12 @@ body::before {
 
 .page-list {
   max-width: 1100px;
-  min-height: calc(100vh - 64px);
+  /* Center within the gap between the header bar and the FAB, not the
+     full viewport (64px header + 68px FAB clearance). Bottom padding
+     matches the top so the centered content lines up with that gap's
+     midpoint instead of skewing toward the shorter side. */
+  min-height: calc(100vh - 64px - 68px);
+  padding-bottom: 32px;
   display: flex;
   flex-direction: column;
   justify-content: center;
