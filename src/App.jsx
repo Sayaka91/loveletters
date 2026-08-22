@@ -1,19 +1,10 @@
-import { useEffect, useState } from 'react'
-import {
-  collection,
-  addDoc,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp
-} from 'firebase/firestore'
-import { db } from './firebase'
+import { useCallback, useEffect, useState } from 'react'
 
-const NOTES_COLLECTION = 'notes'
+const POLL_INTERVAL_MS = 5000
 
-function formatTime(timestamp) {
-  if (!timestamp?.toDate) return ''
-  return timestamp.toDate().toLocaleString('vi-VN')
+function formatTime(ms) {
+  if (!ms) return ''
+  return new Date(ms).toLocaleString('vi-VN')
 }
 
 export default function App() {
@@ -23,30 +14,39 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    const q = query(collection(db, NOTES_COLLECTION), orderBy('createdAt', 'desc'))
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        setNotes(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
-        setError('')
-      },
-      (err) => setError('Không tải được note: ' + err.message)
-    )
-    return unsubscribe
+  const loadNotes = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notes')
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      setNotes(await res.json())
+      setError('')
+    } catch (err) {
+      setError('Không tải được note: ' + err.message)
+    }
   }, [])
+
+  useEffect(() => {
+    loadNotes()
+    const interval = setInterval(loadNotes, POLL_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [loadNotes])
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!content.trim()) return
     setSubmitting(true)
     try {
-      await addDoc(collection(db, NOTES_COLLECTION), {
-        author: author.trim() || 'Ẩn danh',
-        content: content.trim(),
-        createdAt: serverTimestamp()
+      const res = await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ author, content })
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'HTTP ' + res.status)
+      }
       setContent('')
+      await loadNotes()
     } catch (err) {
       setError('Gửi note thất bại: ' + err.message)
     } finally {
