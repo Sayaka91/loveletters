@@ -29,6 +29,27 @@ npm run server   # backend, port 3000, lưu vào ./data/notes.json
 npm run dev       # frontend dev server, port 5173, proxy /api sang :3000
 ```
 
+## Chạy trên Vercel
+
+Vercel không chạy được `server/index.js` (Express `app.listen`) hay ghi file
+vào `data/notes.json` — filesystem trên Vercel là read-only và mỗi request có
+thể chạy trên instance khác nhau. Vì vậy khi deploy lên Vercel, API dùng
+serverless function riêng ở `api/notes.js`, lưu note vào Redis (Upstash) thay
+vì file JSON.
+
+1. Trong Vercel dashboard của project → **Storage** → **Marketplace Database
+   Providers** → thêm **Upstash for Redis** (free tier đủ dùng) và connect
+   vào project. Việc này tự inject env var `UPSTASH_REDIS_REST_URL` /
+   `UPSTASH_REDIS_REST_TOKEN` (hoặc `KV_REST_API_URL` / `KV_REST_API_TOKEN`
+   tùy cách kết nối — `api/notes.js` đã hỗ trợ cả hai).
+2. Redeploy lại project sau khi thêm database để env var có hiệu lực.
+3. `vite build` (đã cấu hình sẵn trong `package.json`) build ra `dist/`,
+   Vercel tự serve như static site; `api/notes.js` được tự nhận diện là
+   serverless function cho route `/api/notes`.
+
+Cách chạy Docker/dev ở trên (dùng file `data/notes.json`) không đổi — chỉ áp
+dụng riêng cho khi tự host, không dùng khi deploy lên Vercel.
+
 ## Kiến trúc
 
 - `server/index.js` — Express server: `GET /api/notes`, `POST /api/notes`,
