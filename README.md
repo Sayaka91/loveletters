@@ -34,16 +34,30 @@ npm run dev       # frontend dev server, port 5173, proxy /api sang :3000
 Vercel không chạy được `server/index.js` (Express `app.listen`) hay ghi file
 vào `data/notes.json` — filesystem trên Vercel là read-only và mỗi request có
 thể chạy trên instance khác nhau. Vì vậy khi deploy lên Vercel, API dùng
-serverless function riêng ở `api/notes.js`, lưu note vào Redis (Upstash) thay
-vì file JSON.
+serverless function riêng ở `api/notes.js`, lưu note vào Supabase (Postgres)
+thay vì file JSON.
 
-1. Trong Vercel dashboard của project → **Storage** → **Marketplace Database
-   Providers** → thêm **Upstash for Redis** (free tier đủ dùng) và connect
-   vào project. Việc này tự inject env var `UPSTASH_REDIS_REST_URL` /
-   `UPSTASH_REDIS_REST_TOKEN` (hoặc `KV_REST_API_URL` / `KV_REST_API_TOKEN`
-   tùy cách kết nối — `api/notes.js` đã hỗ trợ cả hai).
-2. Redeploy lại project sau khi thêm database để env var có hiệu lực.
-3. `vite build` (đã cấu hình sẵn trong `package.json`) build ra `dist/`,
+1. Tạo project tại [supabase.com](https://supabase.com) (free tier đủ dùng).
+2. Vào **SQL Editor**, chạy:
+   ```sql
+   create table notes (
+     id uuid primary key default gen_random_uuid(),
+     author text,
+     content text not null,
+     created_at timestamptz not null default now()
+   );
+   alter table notes enable row level security;
+   ```
+   RLS bật nhưng không có policy nào — bảng chỉ truy cập được qua
+   `service_role` key (server-side), không lộ qua anon key public.
+3. Vào **Project Settings → API**, lấy **Project URL** và **`service_role`
+   secret key**.
+4. Trong Vercel dashboard của project → **Settings → Environment Variables**,
+   thêm `SUPABASE_URL` và `SUPABASE_SERVICE_ROLE_KEY` với giá trị vừa lấy.
+   Không dùng tên biến có prefix `NEXT_PUBLIC_`/`VITE_` vì key này tuyệt đối
+   không được lộ ra frontend.
+5. Redeploy lại project sau khi thêm env var để có hiệu lực.
+6. `vite build` (đã cấu hình sẵn trong `package.json`) build ra `dist/`,
    Vercel tự serve như static site; `api/notes.js` được tự nhận diện là
    serverless function cho route `/api/notes`.
 

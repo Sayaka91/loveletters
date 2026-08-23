@@ -1,21 +1,29 @@
-import { Redis } from '@upstash/redis'
+import { createClient } from '@supabase/supabase-js'
 
 const MAX_CONTENT_LENGTH = 1000
 const MAX_AUTHOR_LENGTH = 50
-const NOTES_KEY = 'loveletter:notes'
 
-// Vercel's Upstash Redis integration may inject either naming convention
-// depending on how it was connected, so accept both.
-const kv = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
-})
+// service_role key bypasses RLS — only ever used here, server-side, never
+// sent to the browser. Keep RLS enabled with no public policies on `notes`.
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+
+function toApiNote(row) {
+  return {
+    id: row.id,
+    author: row.author,
+    content: row.content,
+    createdAt: new Date(row.created_at).getTime()
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const notes = (await kv.get(NOTES_KEY)) || []
-    notes.sort((a, b) => b.createdAt - a.createdAt)
-    return res.status(200).json(notes)
+    const { data, error } = await supabase
+      .from('notes')
+      .select('id, author, content, created_at')
+      .order('created_at', { ascending: false })
+    if (error) return res.status(500).json({ error: error.message })
+    return res.status(200).json(data.map(toApiNote))
   }
 
   if (req.method === 'POST') {
@@ -25,17 +33,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'content is required' })
     }
 
-    const note = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-      author: (typeof author === 'string' ? author.trim() : '').slice(0, MAX_AUTHOR_LENGTH) || 'Ẩn danh',
-      content: trimmedContent.slice(0, MAX_CONTENT_LENGTH),
-      createdAt: Date.now()
-    }
-
-    const notes = (await kv.get(NOTES_KEY)) || []
-    notes.push(note)
-    await kv.set(NOTES_KEY, notes)
-    return res.status(201).json(note)
+    const { data, error } = await supabase
+      .from('notes')
+      .insert({
+        author: (typeof author === 'string' ? author.trim() : '').slice(0, MAX_AUTHOR_LENGTH) || 'Ẩn danh',
+        content: trimmedContent.slice(0, MAX_CONTENT_LENGTH)
+      })
+      .select('id, author, content, created_at')
+      .single()
+    if (error) return res.status(500).json({ error: error.message })
+    return res.status(201).json(toApiNote(data))
   }
 
   res.setHeader('Allow', ['GET', 'POST'])

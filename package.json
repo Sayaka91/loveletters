@@ -10,7 +10,7 @@
     "server": "node server/index.js"
   },
   "dependencies": {
-    "@upstash/redis": "^1.38.2",
+    "@supabase/supabase-js": "^2.112.3",
     "express": "^4.19.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
