@@ -14,7 +14,7 @@
 
 body {
   margin: 0;
-  font-family: 'Amatic SC', cursive;
+  font-family: 'Mali', cursive;
   background: #d6eaf8;
   color: #3a2e39;
   position: relative;
@@ -141,7 +141,7 @@ body::before {
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.35);
   color: #f5f0ff;
-  font-family: 'Amatic SC', cursive;
+  font-family: 'Mali', cursive;
   font-size: 1.1rem;
   font-weight: 700;
   padding: 8px 16px;
@@ -197,6 +197,12 @@ body::before {
   font-size: 1.7rem;
 }
 
+.list-header-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+}
+
 .all-btn {
   flex-shrink: 0;
   width: 40px;
@@ -225,7 +231,7 @@ body::before {
 h1 {
   text-align: center;
   margin-bottom: 4px;
-  font-family: 'Amatic SC', cursive;
+  font-family: 'Mali', cursive;
   font-weight: 400;
   font-size: 2.75rem;
   display: flex;
@@ -279,7 +285,7 @@ h1 {
   border: none;
   padding: 6px 14px;
   border-radius: 8px;
-  font-family: 'Amatic SC', cursive;
+  font-family: 'Mali', cursive;
   font-size: 1.1rem;
   cursor: pointer;
 }
@@ -330,6 +336,12 @@ h1 {
   padding-right: 4px;
   position: relative;
   z-index: 1;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.note-list-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .notes-stage {
@@ -406,6 +418,11 @@ h1 {
   font-size: 0.78rem;
   text-align: center;
   color: #1b4f72;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 600px) {
@@ -498,7 +515,7 @@ h1 {
   border: 1px solid #d9ecf5;
   border-radius: 8px;
   padding: 6px 12px;
-  font-family: 'Amatic SC', cursive;
+  font-family: 'Mali', cursive;
   font-size: 1rem;
   cursor: pointer;
 }

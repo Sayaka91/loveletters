@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 
 const POLL_INTERVAL_MS = 5000
-const BG_SLIDE_INTERVAL_MS = 8000
-const BG_IMAGES = ['/photo/bg1.jpg', '/photo/bg2.jpg', '/photo/bg3.jpg', '/photo/bg4.jpg', '/photo/bg5.jpg']
+// Picks up every image dropped into src/assets/photo/ automatically — add or
+// remove files there and the slideshow adjusts, no code change needed.
+const BG_IMAGES = Object.entries(
+  import.meta.glob('./assets/photo/*.{jpg,jpeg,png,webp}', { eager: true, import: 'default' })
+)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([, url]) => url)
 const VISIBLE_WINDOW_MS = 24 * 60 * 60 * 1000
 const MAX_VISIBLE_NOTES = 45
 
@@ -62,17 +67,51 @@ function ListIcon({ size = 18 }) {
   )
 }
 
-// Cross-fades through BG_IMAGES in order, looping back to the first.
-function BackgroundSlideshow() {
-  const [index, setIndex] = useState(0)
+// Open eye — notes are visible, click to hide them.
+function EyeIcon({ size = 18 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      setIndex((i) => (i + 1) % BG_IMAGES.length)
-    }, BG_SLIDE_INTERVAL_MS)
-    return () => clearInterval(id)
-  }, [])
+// Eye with a slash — notes are hidden, click to show them again.
+function EyeOffIcon({ size = 18 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+      <line x1="3" y1="21" x2="21" y2="3" />
+    </svg>
+  )
+}
 
+// Cross-fades to the next image in BG_IMAGES (looping back to the first)
+// each time the caller advances `index` — driven by a click on the stage,
+// not a timer.
+function BackgroundSlideshow({ index }) {
   return (
     <div className="bg-slideshow" aria-hidden="true">
       {BG_IMAGES.map((src, i) => (
@@ -122,7 +161,10 @@ function NoteScatterCard({ note, index, total, onClick }) {
     <div
       className="scatter-card"
       style={{ left, top, transform: `rotate(${rotate}deg)`, opacity, zIndex }}
-      onClick={() => onClick(note)}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick(note)
+      }}
     >
       <p className="note-meta note-meta-compact">
         {note.author} · {formatElapsed(note.createdAt)}
@@ -172,9 +214,12 @@ function AppHeader({ activePage, onNavigate }) {
   )
 }
 
-function TopicListView({ topics, error, onTopicClick }) {
+function TopicListView({ topics, error, onTopicClick, onBack }) {
   return (
     <div className="page">
+      <button className="back-link" onClick={onBack} aria-label="Quay lại">
+        ←
+      </button>
       <h1>Góc tâm sự</h1>
       <p className="subtitle">Mở lòng một chút, không ai biết đó là ai đâu.</p>
 
@@ -307,7 +352,7 @@ function ReplyCreateView({ topic, onCancel, onCreated }) {
 
 // Owns its own list/detail/create navigation so App() only needs to mount it
 // for the 'confession' page, same as NoteListView owns scatter/list toggling.
-function ConfessionPage() {
+function ConfessionPage({ onBack }) {
   const [view, setView] = useState('list')
   const [topics, setTopics] = useState([])
   const [error, setError] = useState('')
@@ -393,28 +438,44 @@ function ConfessionPage() {
     )
   }
 
-  return <TopicListView topics={topics} error={error} onTopicClick={openTopic} />
+  return <TopicListView topics={topics} error={error} onTopicClick={openTopic} onBack={onBack} />
 }
 
 function NoteListView({ notes, error, onAddClick }) {
   const [displayMode, setDisplayMode] = useState('scatter')
   const [expandedNote, setExpandedNote] = useState(null)
+  const [bgIndex, setBgIndex] = useState(0)
+  const [notesHidden, setNotesHidden] = useState(false)
   const visibleNotes = notes
     .filter((note) => Date.now() - note.createdAt <= VISIBLE_WINDOW_MS)
     .slice(0, MAX_VISIBLE_NOTES)
 
+  function handleAdvanceBg() {
+    setBgIndex((i) => (i + 1) % BG_IMAGES.length)
+  }
+
   return (
     <div className="page page-list">
       <div className="list-header">
-        <p className="subtitle">Để lại dấu chân ở đây nhé!</p>
-        <button
-          className="all-btn"
-          onClick={() => setDisplayMode((mode) => (mode === 'scatter' ? 'list' : 'scatter'))}
-          aria-label={displayMode === 'scatter' ? 'Xem dạng danh sách' : 'Xem ngẫu nhiên'}
-          title={displayMode === 'scatter' ? 'Xem dạng danh sách' : 'Xem ngẫu nhiên'}
-        >
-          {displayMode === 'scatter' ? <ListIcon /> : <ShuffleIcon />}
-        </button>
+        <p className="subtitle">Mỗi ngày một lời yêu &lt;3</p>
+        <div className="list-header-actions">
+          <button
+            className="all-btn"
+            onClick={() => setNotesHidden((hidden) => !hidden)}
+            aria-label={notesHidden ? 'Hiện note' : 'Ẩn note'}
+            title={notesHidden ? 'Hiện note' : 'Ẩn note'}
+          >
+            {notesHidden ? <EyeOffIcon /> : <EyeIcon />}
+          </button>
+          <button
+            className="all-btn"
+            onClick={() => setDisplayMode((mode) => (mode === 'scatter' ? 'list' : 'scatter'))}
+            aria-label={displayMode === 'scatter' ? 'Xem dạng danh sách' : 'Xem ngẫu nhiên'}
+            title={displayMode === 'scatter' ? 'Xem dạng danh sách' : 'Xem ngẫu nhiên'}
+          >
+            {displayMode === 'scatter' ? <ListIcon /> : <ShuffleIcon />}
+          </button>
+        </div>
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -423,9 +484,9 @@ function NoteListView({ notes, error, onAddClick }) {
         <p className="empty-state">Chưa có note nào trong 24h qua. Hãy là người đầu tiên viết!</p>
       )}
 
-      <div className="notes-stage">
-        <BackgroundSlideshow />
-        {displayMode === 'scatter' ? (
+      <div className="notes-stage" onClick={handleAdvanceBg}>
+        <BackgroundSlideshow index={bgIndex} />
+        {notesHidden ? null : displayMode === 'scatter' ? (
           <div className="scatter-board">
             {visibleNotes.map((note, index) => (
               <NoteScatterCard
@@ -559,7 +620,7 @@ export default function App() {
     <>
       <AppHeader activePage={page} onNavigate={handleNavigate} />
       {page === 'confession' ? (
-        <ConfessionPage />
+        <ConfessionPage onBack={() => handleNavigate('notes')} />
       ) : view === 'create' ? (
         <NoteCreateView
           onCancel={() => setView('list')}
