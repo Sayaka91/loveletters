@@ -493,6 +493,29 @@ h1 {
   text-align: right;
 }
 
+.note-content-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.see-more-btn {
+  display: block;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: -4px 0 8px;
+  font-family: 'Mali', cursive;
+  font-size: 0.95rem;
+  color: #1b5e85;
+  cursor: pointer;
+}
+
+.see-more-btn:hover {
+  text-decoration: underline;
+}
+
 .empty-state {
   text-align: center;
   color: #a08a9b;

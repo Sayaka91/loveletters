@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const POLL_INTERVAL_MS = 5000
 // Picks up every image dropped into src/assets/photo/ automatically — add or
@@ -242,6 +242,34 @@ function TopicListView({ topics, error, onTopicClick, onBack }) {
   )
 }
 
+// Clamps reply text to 2 lines with a "Xem thêm" toggle, only shown when the
+// text actually overflows those 2 lines.
+function ReplyItem({ reply }) {
+  const [expanded, setExpanded] = useState(false)
+  const [isTruncated, setIsTruncated] = useState(false)
+  const contentRef = useRef(null)
+
+  useEffect(() => {
+    if (expanded) return
+    const el = contentRef.current
+    if (el) setIsTruncated(el.scrollHeight > el.clientHeight + 1)
+  }, [reply.content, expanded])
+
+  return (
+    <li className="note-card">
+      <p ref={contentRef} className={'note-content' + (expanded ? '' : ' note-content-clamped')}>
+        {reply.content}
+      </p>
+      {(isTruncated || expanded) && (
+        <button type="button" className="see-more-btn" onClick={() => setExpanded((e) => !e)}>
+          {expanded ? 'Ẩn' : 'Xem thêm'}
+        </button>
+      )}
+      <p className="note-meta">{formatElapsed(reply.createdAt)} trước</p>
+    </li>
+  )
+}
+
 function TopicDetailView({ topic, replies, page, totalPages, error, onBack, onAddClick, onPageChange }) {
   function goToPage(newPage) {
     onPageChange(newPage)
@@ -264,10 +292,7 @@ function TopicDetailView({ topic, replies, page, totalPages, error, onBack, onAd
 
       <ul className="note-list">
         {replies.map((reply) => (
-          <li key={reply.id} className="note-card">
-            <p className="note-content">{reply.content}</p>
-            <p className="note-meta">{formatElapsed(reply.createdAt)} trước</p>
-          </li>
+          <ReplyItem key={reply.id} reply={reply} />
         ))}
       </ul>
 
