@@ -4,6 +4,7 @@ const POLL_INTERVAL_MS = 5000
 const BG_SLIDE_INTERVAL_MS = 8000
 const BG_IMAGES = ['/photo/bg1.jpg', '/photo/bg2.jpg', '/photo/bg3.jpg', '/photo/bg4.jpg', '/photo/bg5.jpg']
 const VISIBLE_WINDOW_MS = 24 * 60 * 60 * 1000
+const MAX_VISIBLE_NOTES = 45
 
 // Elapsed time from note creation to now, e.g. "5m", "1h", "1h30m".
 function formatElapsed(createdAtMs) {
@@ -98,7 +99,7 @@ function seededRandom(seed) {
   return ((h >>> 0) % 100000) / 100000
 }
 
-function NoteScatterCard({ note, index, total }) {
+function NoteScatterCard({ note, index, total, onClick }) {
   const rLeft = seededRandom(note.id + ':left')
   const rTop = seededRandom(note.id + ':top')
   const rotate = (seededRandom(note.id + ':rot') * 16 - 8).toFixed(1)
@@ -118,17 +119,35 @@ function NoteScatterCard({ note, index, total }) {
   const top = `calc(2% + ${rTop.toFixed(4)} * (96% - var(--card-h) * 1.15))`
 
   return (
-    <div className="scatter-card" style={{ left, top, transform: `rotate(${rotate}deg)`, opacity, zIndex }}>
-      <p className="note-content">{note.content}</p>
-      <p className="note-meta">
-        — {note.author} · {formatElapsed(note.createdAt)}
+    <div
+      className="scatter-card"
+      style={{ left, top, transform: `rotate(${rotate}deg)`, opacity, zIndex }}
+      onClick={() => onClick(note)}
+    >
+      <p className="note-meta note-meta-compact">
+        {note.author} · {formatElapsed(note.createdAt)}
       </p>
     </div>
   )
 }
 
+// Full-size readable version of a note, shown over a backdrop after
+// clicking a shrunk scatter card.
+function NoteExpandOverlay({ note, onClose }) {
+  return (
+    <div className="note-expand-overlay" onClick={onClose}>
+      <div className="note-expand-card" onClick={(e) => e.stopPropagation()}>
+        <p className="note-content">{note.content}</p>
+        <p className="note-meta">
+          — {note.author} · {formatElapsed(note.createdAt)}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 // Add more entries here to expose new pages as options next to the brand title.
-const NAV_ITEMS = [{ key: 'about', label: 'Giới thiệu' }]
+const NAV_ITEMS = [{ key: 'confession', label: 'Góc tâm sự' }]
 
 function AppHeader({ activePage, onNavigate }) {
   return (
@@ -153,28 +172,236 @@ function AppHeader({ activePage, onNavigate }) {
   )
 }
 
-function AboutView({ onBack }) {
+function TopicListView({ topics, error, onTopicClick }) {
+  return (
+    <div className="page">
+      <h1>Góc tâm sự</h1>
+      <p className="subtitle">Mở lòng một chút, không ai biết đó là ai đâu.</p>
+
+      {error && <p className="error">{error}</p>}
+
+      {topics.length === 0 && !error && <p className="empty-state">Chưa có chủ đề nào.</p>}
+
+      <ul className="topic-list">
+        {topics.map((topic) => (
+          <li key={topic.id} className="topic-card" onClick={() => onTopicClick(topic)}>
+            <p className="topic-title">{topic.title}</p>
+            <div className="topic-meta-row">
+              <span className="topic-reply-count">{topic.replyCount} trả lời</span>
+              <span className="note-meta">{formatElapsed(topic.createdAt)}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function TopicDetailView({ topic, replies, page, totalPages, error, onBack, onAddClick, onPageChange }) {
+  function goToPage(newPage) {
+    onPageChange(newPage)
+    // Instant, not smooth: the reply list's height changes as soon as the
+    // new page's data arrives, which cuts an in-progress smooth scroll short.
+    window.scrollTo(0, 0)
+  }
+
   return (
     <div className="page">
       <button className="back-link" onClick={onBack} aria-label="Quay lại">
         ←
       </button>
-      <h1>Giới thiệu</h1>
-      <div className="about-card">
-        <p>
-          <strong>Tên:</strong> (sẽ bổ sung)
-        </p>
-        <p>
-          <strong>Thông tin liên hệ:</strong> (sẽ bổ sung)
-        </p>
-      </div>
+      <h1>{topic.title}</h1>
+      <p className="subtitle">Tạo {formatElapsed(topic.createdAt)} trước</p>
+
+      {error && <p className="error">{error}</p>}
+
+      {replies.length === 0 && !error && <p className="empty-state">Chưa có câu trả lời nào.</p>}
+
+      <ul className="note-list">
+        {replies.map((reply) => (
+          <li key={reply.id} className="note-card">
+            <p className="note-content">{reply.content}</p>
+            <p className="note-meta">{formatElapsed(reply.createdAt)} trước</p>
+          </li>
+        ))}
+      </ul>
+
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button type="button" onClick={() => goToPage(page - 1)} disabled={page <= 1}>
+            ← Trước
+          </button>
+          <span>
+            Trang {page}/{totalPages}
+          </span>
+          <button type="button" onClick={() => goToPage(page + 1)} disabled={page >= totalPages}>
+            Sau →
+          </button>
+        </div>
+      )}
+
+      <button className="fab" onClick={onAddClick} aria-label="Trả lời" title="Trả lời">
+        +
+      </button>
     </div>
   )
 }
 
+function ReplyCreateView({ topic, onCancel, onCreated }) {
+  const [content, setContent] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!content.trim()) return
+    setSubmitting(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/topics/${topic.id}/replies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'HTTP ' + res.status)
+      }
+      onCreated()
+    } catch (err) {
+      setError('Gửi câu trả lời thất bại: ' + err.message)
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="page">
+      <button className="back-link" onClick={onCancel} aria-label="Quay lại">
+        ←
+      </button>
+      <h1>Trả lời</h1>
+      <p className="subtitle">{topic.title}</p>
+      <form className="note-form" onSubmit={handleSubmit}>
+        <textarea
+          placeholder="Viết câu trả lời..."
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          maxLength={1000}
+          rows={6}
+          required
+          autoFocus
+        />
+        {error && <p className="error">{error}</p>}
+        <div className="form-actions">
+          <button type="button" className="btn-secondary" onClick={onCancel} disabled={submitting}>
+            Hủy
+          </button>
+          <button type="submit" disabled={submitting}>
+            {submitting ? 'Đang gửi...' : 'Gửi trả lời'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+// Owns its own list/detail/create navigation so App() only needs to mount it
+// for the 'confession' page, same as NoteListView owns scatter/list toggling.
+function ConfessionPage() {
+  const [view, setView] = useState('list')
+  const [topics, setTopics] = useState([])
+  const [error, setError] = useState('')
+  const [selectedTopic, setSelectedTopic] = useState(null)
+  const [replies, setReplies] = useState([])
+  const [repliesError, setRepliesError] = useState('')
+  const [repliesPage, setRepliesPage] = useState(1)
+  const [repliesTotalPages, setRepliesTotalPages] = useState(1)
+
+  const loadTopics = useCallback(async () => {
+    try {
+      const res = await fetch('/api/topics')
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      setTopics(await res.json())
+      setError('')
+    } catch (err) {
+      setError('Không tải được chủ đề: ' + err.message)
+    }
+  }, [])
+
+  const loadReplies = useCallback(async (topicId, page) => {
+    try {
+      const res = await fetch(`/api/topics/${topicId}/replies?page=${page}`)
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      const data = await res.json()
+      setReplies(data.replies)
+      setRepliesPage(data.page)
+      setRepliesTotalPages(data.totalPages)
+      setRepliesError('')
+    } catch (err) {
+      setRepliesError('Không tải được câu trả lời: ' + err.message)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadTopics()
+    if (view !== 'list') return
+    const interval = setInterval(loadTopics, POLL_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [loadTopics, view])
+
+  useEffect(() => {
+    if (view !== 'detail' || !selectedTopic) return
+    loadReplies(selectedTopic.id, repliesPage)
+    const interval = setInterval(() => loadReplies(selectedTopic.id, repliesPage), POLL_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [loadReplies, view, selectedTopic, repliesPage])
+
+  function openTopic(topic) {
+    setSelectedTopic(topic)
+    setRepliesPage(1)
+    setView('detail')
+  }
+
+  if (view === 'detail' && selectedTopic) {
+    return (
+      <TopicDetailView
+        topic={selectedTopic}
+        replies={replies}
+        page={repliesPage}
+        totalPages={repliesTotalPages}
+        error={repliesError}
+        onBack={() => setView('list')}
+        onAddClick={() => setView('create-reply')}
+        onPageChange={setRepliesPage}
+      />
+    )
+  }
+
+  if (view === 'create-reply' && selectedTopic) {
+    return (
+      <ReplyCreateView
+        topic={selectedTopic}
+        onCancel={() => setView('detail')}
+        onCreated={async () => {
+          // A new reply always lands on the last page (replies are ordered
+          // oldest-first) — request a page far beyond what's known and let
+          // the API clamp it down to the real last page.
+          await loadReplies(selectedTopic.id, Number.MAX_SAFE_INTEGER)
+          setView('detail')
+        }}
+      />
+    )
+  }
+
+  return <TopicListView topics={topics} error={error} onTopicClick={openTopic} />
+}
+
 function NoteListView({ notes, error, onAddClick }) {
   const [displayMode, setDisplayMode] = useState('scatter')
-  const visibleNotes = notes.filter((note) => Date.now() - note.createdAt <= VISIBLE_WINDOW_MS)
+  const [expandedNote, setExpandedNote] = useState(null)
+  const visibleNotes = notes
+    .filter((note) => Date.now() - note.createdAt <= VISIBLE_WINDOW_MS)
+    .slice(0, MAX_VISIBLE_NOTES)
 
   return (
     <div className="page page-list">
@@ -201,7 +428,13 @@ function NoteListView({ notes, error, onAddClick }) {
         {displayMode === 'scatter' ? (
           <div className="scatter-board">
             {visibleNotes.map((note, index) => (
-              <NoteScatterCard key={note.id} note={note} index={index} total={visibleNotes.length} />
+              <NoteScatterCard
+                key={note.id}
+                note={note}
+                index={index}
+                total={visibleNotes.length}
+                onClick={setExpandedNote}
+              />
             ))}
           </div>
         ) : (
@@ -217,6 +450,8 @@ function NoteListView({ notes, error, onAddClick }) {
           </ul>
         )}
       </div>
+
+      {expandedNote && <NoteExpandOverlay note={expandedNote} onClose={() => setExpandedNote(null)} />}
 
       <button className="fab" onClick={onAddClick} aria-label="Thêm note" title="Thêm note">
         +
@@ -323,8 +558,8 @@ export default function App() {
   return (
     <>
       <AppHeader activePage={page} onNavigate={handleNavigate} />
-      {page === 'about' ? (
-        <AboutView onBack={() => handleNavigate('notes')} />
+      {page === 'confession' ? (
+        <ConfessionPage />
       ) : view === 'create' ? (
         <NoteCreateView
           onCancel={() => setView('list')}
