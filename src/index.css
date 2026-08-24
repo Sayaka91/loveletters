@@ -10,12 +10,25 @@
   /* Gap reserved between the header and the image, per note-list-header
      row (subtitle + view-toggle button), = 1.5x the header's height. */
   --header-gap: calc(var(--header-h) * 1.5);
+
+  /* Teal-to-blue brand gradient and the solid tones sampled from it,
+     used everywhere a flat accent color is needed (buttons, links, icons). */
+  --gradient-brand: linear-gradient(135deg, #4a9b87 0%, #4a7fc4 100%);
+  --accent: #3d7a99;
+  --accent-dark: #2c5a72;
+  --accent-shadow: 61, 122, 153;
+  --text-accent: #2f6b63;
+  --text-muted: #6f9a92;
+  --border-soft: #d7ece5;
+  --hover-soft: #e6f5ef;
+  --card-bg-solid: #eef8f5;
 }
 
 body {
   margin: 0;
   font-family: 'Mali', cursive;
-  background: #d6eaf8;
+  background: linear-gradient(160deg, #dcf0ea 0%, #dbe9fb 100%);
+  background-attachment: fixed;
   color: #3a2e39;
   position: relative;
 }
@@ -50,7 +63,7 @@ body::before {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: linear-gradient(135deg, #2e86c1, #1b5e85 55%, #123f52);
+  background: var(--gradient-brand);
 }
 
 .app-header-inner {
@@ -106,7 +119,7 @@ body::before {
 
 .nav-item-active {
   background: #fff;
-  color: #1b5e85;
+  color: var(--accent);
   border-color: #fff;
 }
 
@@ -159,10 +172,10 @@ body::before {
   height: 40px;
   padding: 0;
   background: #fff;
-  color: #1b5e85;
+  color: var(--accent);
   border: none;
   border-radius: 50%;
-  box-shadow: 0 3px 10px rgba(27, 94, 133, 0.22);
+  box-shadow: 0 3px 10px rgba(var(--accent-shadow), 0.22);
   font-size: 1.05rem;
   line-height: 1;
   display: flex;
@@ -173,8 +186,8 @@ body::before {
 }
 
 .all-btn:hover {
-  background: #eaf4fb;
-  box-shadow: 0 5px 14px rgba(27, 94, 133, 0.32);
+  background: var(--hover-soft);
+  box-shadow: 0 5px 14px rgba(var(--accent-shadow), 0.32);
   transform: translateY(-1px);
 }
 
@@ -230,7 +243,7 @@ h1 {
 
 .note-form button {
   align-self: flex-end;
-  background: #1b5e85;
+  background: var(--accent);
   color: #fff;
   border: none;
   padding: 6px 14px;
@@ -241,7 +254,7 @@ h1 {
 }
 
 .note-form button:hover:not(:disabled) {
-  background: #123f52;
+  background: var(--accent-dark);
 }
 
 .note-form button:disabled {
@@ -257,12 +270,12 @@ h1 {
 
 .btn-secondary {
   background: #fff !important;
-  color: #1b5e85 !important;
+  color: var(--accent) !important;
   border: none !important;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #e4eff4 !important;
+  background: var(--hover-soft) !important;
 }
 
 .error {
@@ -339,7 +352,7 @@ h1 {
   position: absolute;
   width: var(--card-w);
   height: var(--card-h);
-  background: #f0f8fd;
+  background: var(--card-bg-solid);
   border-radius: 10px;
   padding: 6px 10px;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
@@ -361,7 +374,7 @@ h1 {
 .scatter-card .note-meta-compact {
   font-size: 0.78rem;
   text-align: center;
-  color: #1b4f72;
+  color: var(--text-accent);
   min-width: 0;
   max-width: 100%;
   white-space: nowrap;
@@ -393,7 +406,7 @@ h1 {
 }
 
 .note-expand-card {
-  background: #f0f8fd;
+  background: var(--card-bg-solid);
   border-radius: 14px;
   padding: 24px 26px;
   max-width: 420px;
@@ -414,7 +427,7 @@ h1 {
 }
 
 .note-card {
-  background: rgba(240, 248, 253, 0.5);
+  background: rgba(250, 240, 247, 0.5);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   padding: 14px 16px;
@@ -426,14 +439,14 @@ h1 {
   margin: 0 0 8px;
   white-space: pre-wrap;
   word-break: break-word;
-  color: #1b4f72;
+  color: var(--text-accent);
   font-size: 1.4rem;
 }
 
 .note-meta {
   margin: 0;
   font-size: 0.85rem;
-  color: #6c8ba3;
+  color: var(--text-muted);
   text-align: right;
 }
 
@@ -452,7 +465,7 @@ h1 {
   margin: -4px 0 8px;
   font-family: 'Mali', cursive;
   font-size: 0.95rem;
-  color: #1b5e85;
+  color: var(--accent);
   cursor: pointer;
 }
 
@@ -472,14 +485,14 @@ h1 {
   justify-content: center;
   gap: 16px;
   margin-top: 20px;
-  color: #6c8ba3;
+  color: var(--text-muted);
   font-size: 0.95rem;
 }
 
 .pagination button {
   background: #fff;
-  color: #1b5e85;
-  border: 1px solid #d9ecf5;
+  color: var(--accent);
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
   padding: 6px 12px;
   font-family: 'Mali', cursive;
@@ -488,7 +501,7 @@ h1 {
 }
 
 .pagination button:hover:not(:disabled) {
-  background: #eaf4fb;
+  background: var(--hover-soft);
 }
 
 .pagination button:disabled {
@@ -499,7 +512,7 @@ h1 {
 .back-link {
   background: none;
   border: none;
-  color: #1b5e85;
+  color: var(--accent);
   font-size: 1.6rem;
   line-height: 1;
   padding: 0;
@@ -514,12 +527,12 @@ h1 {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #1b5e85;
+  background: var(--gradient-brand);
   color: #fff;
   border: none;
   font-size: 1.4rem;
   line-height: 1;
-  box-shadow: 0 4px 14px rgba(27, 94, 133, 0.45);
+  box-shadow: 0 4px 14px rgba(var(--accent-shadow), 0.45);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -527,7 +540,7 @@ h1 {
 }
 
 .fab:hover {
-  background: #123f52;
+  filter: brightness(0.9);
 }
 
 .topic-list {
@@ -539,7 +552,7 @@ h1 {
 }
 
 .topic-card {
-  background: rgba(240, 248, 253, 0.6);
+  background: rgba(250, 240, 247, 0.6);
   padding: 14px 16px;
   border-radius: 12px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
@@ -557,7 +570,7 @@ h1 {
 
 .topic-title {
   margin: 0;
-  color: #1b4f72;
+  color: var(--text-accent);
   font-size: 1.3rem;
 }
 
@@ -570,7 +583,7 @@ h1 {
 
 .topic-reply-count {
   font-size: 0.85rem;
-  color: #6c8ba3;
+  color: var(--text-muted);
 }
 
 .topic-card .note-meta {
