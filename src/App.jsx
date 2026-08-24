@@ -22,6 +22,17 @@ function formatElapsed(createdAtMs) {
   return `${hours}h${minutes}m`
 }
 
+// Elapsed time for topics, phrased as "X trước" (e.g. "5m trước"), collapsing
+// to whole days ("2d trước") once a full day has passed so long-lived topics
+// don't show large hour counts like "72h54m trước".
+function formatTopicElapsed(createdAtMs) {
+  if (!createdAtMs) return ''
+  const totalMinutes = Math.max(0, Math.floor((Date.now() - createdAtMs) / 60000))
+  const days = Math.floor(totalMinutes / 1440)
+  if (days >= 1) return `${days}d trước`
+  return `${formatElapsed(createdAtMs)} trước`
+}
+
 // Monochrome shuffle icon — inherits `color` so it stays on-theme (blue/white)
 // instead of a multicolor emoji.
 function ShuffleIcon({ size = 18 }) {
@@ -231,7 +242,7 @@ function TopicListView({ topics, error, onTopicClick, onBack }) {
             <p className="topic-title">{topic.title}</p>
             <div className="topic-meta-row">
               <span className="topic-reply-count">{topic.replyCount} trả lời</span>
-              <span className="note-meta">{formatElapsed(topic.createdAt)}</span>
+              <span className="note-meta">{formatTopicElapsed(topic.createdAt)}</span>
             </div>
           </li>
         ))}
@@ -263,7 +274,7 @@ function ReplyItem({ reply }) {
           {expanded ? 'Ẩn' : 'Xem thêm'}
         </button>
       )}
-      <p className="note-meta">{formatElapsed(reply.createdAt)} trước</p>
+      <p className="note-meta">{formatTopicElapsed(reply.createdAt)}</p>
     </li>
   )
 }
@@ -282,7 +293,7 @@ function TopicDetailView({ topic, replies, page, totalPages, error, onBack, onAd
         ←
       </button>
       <h1>{topic.title}</h1>
-      <p className="subtitle">Tạo {formatElapsed(topic.createdAt)} trước</p>
+      <p className="subtitle">Tạo {formatTopicElapsed(topic.createdAt)}</p>
 
       {error && <p className="error">{error}</p>}
 
