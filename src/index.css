@@ -348,6 +348,12 @@ h1 {
   height: 100%;
 }
 
+@keyframes scatter-card-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
 .scatter-card {
   --card-w: 90px;
   --card-h: 46px;
@@ -364,6 +370,7 @@ h1 {
   align-items: center;
   justify-content: center;
   transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  animation: scatter-card-fade-in 0.3s ease-out;
 }
 
 .scatter-card:hover {
@@ -395,6 +402,30 @@ h1 {
   }
 }
 
+/* Plays while a note is closing after being read, before it's actually
+   removed — shrinks and fades out in place instead of vanishing instantly.
+   !important is needed to win over the per-card inline opacity/transform
+   (random rotation, stacking fade) set in NoteScatterCard. */
+.scatter-card.scatter-card-leaving {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0 !important;
+  transform: scale(0.5) !important;
+  pointer-events: none;
+}
+
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes expand-card-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
 .note-expand-overlay {
   position: fixed;
   inset: 0;
@@ -405,6 +436,12 @@ h1 {
   justify-content: center;
   padding: 24px;
   cursor: pointer;
+  animation: overlay-fade-in 0.2s ease-out;
+  transition: opacity 0.2s ease;
+}
+
+.note-expand-overlay-closing {
+  opacity: 0;
 }
 
 .note-expand-card {
@@ -417,6 +454,13 @@ h1 {
   overflow-y: auto;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
   cursor: default;
+  animation: expand-card-pop-in 0.22s ease-out;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.note-expand-overlay-closing .note-expand-card {
+  transform: scale(0.85);
+  opacity: 0;
 }
 
 .note-expand-card .note-content {
@@ -428,6 +472,13 @@ h1 {
   font-size: 0.9rem;
 }
 
+@keyframes note-card-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
 .note-card {
   background: rgba(238, 248, 245, 0.5);
   backdrop-filter: blur(6px);
@@ -435,6 +486,7 @@ h1 {
   padding: 14px 16px;
   border-radius: 12px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+  animation: note-card-fade-in 0.25s ease-out;
 }
 
 .note-content {

@@ -149,7 +149,7 @@ function seededRandom(seed) {
   return ((h >>> 0) % 100000) / 100000
 }
 
-function NoteScatterCard({ note, index, total, onClick }) {
+function NoteScatterCard({ note, index, total, onClick, leaving }) {
   const rLeft = seededRandom(note.id + ':left')
   const rTop = seededRandom(note.id + ':top')
   const rotate = (seededRandom(note.id + ':rot') * 16 - 8).toFixed(1)
@@ -170,7 +170,7 @@ function NoteScatterCard({ note, index, total, onClick }) {
 
   return (
     <div
-      className="scatter-card"
+      className={'scatter-card' + (leaving ? ' scatter-card-leaving' : '')}
       style={{ left, top, transform: `rotate(${rotate}deg)`, opacity, zIndex }}
       onClick={(e) => {
         e.stopPropagation()
@@ -184,9 +184,12 @@ function NoteScatterCard({ note, index, total, onClick }) {
 
 // Full-size readable version of a note, shown over a backdrop after
 // clicking a shrunk scatter card.
-function NoteExpandOverlay({ note, onClose }) {
+function NoteExpandOverlay({ note, onClose, closing }) {
   return (
-    <div className="note-expand-overlay" onClick={onClose}>
+    <div
+      className={'note-expand-overlay' + (closing ? ' note-expand-overlay-closing' : '')}
+      onClick={onClose}
+    >
       <div className="note-expand-card" onClick={(e) => e.stopPropagation()}>
         <p className="note-content">{note.content}</p>
         <p className="note-meta">
@@ -477,14 +480,36 @@ function ConfessionPage({ onBack }) {
   return <TopicListView topics={topics} error={error} onTopicClick={openTopic} onBack={onBack} />
 }
 
-function NoteListView({ notes, error, onAddClick }) {
+function NoteListView({ notes, error, onAddClick, readNoteIds, onNoteRead }) {
   const [displayMode, setDisplayMode] = useState('scatter')
   const [expandedNote, setExpandedNote] = useState(null)
+  const [overlayClosing, setOverlayClosing] = useState(false)
+  const [leavingId, setLeavingId] = useState(null)
   const [bgIndex, setBgIndex] = useState(0)
   const [notesHidden, setNotesHidden] = useState(false)
   const visibleNotes = notes
     .filter((note) => Date.now() - note.createdAt <= VISIBLE_WINDOW_MS)
+    .filter((note) => !readNoteIds.has(note.id))
     .slice(0, MAX_VISIBLE_NOTES)
+
+  // Plays the overlay's fade-out and the scatter card's shrink-out at the
+  // same time, then marks the note read (removing it for good) only once
+  // the card's animation has actually finished — instead of both vanishing
+  // instantly.
+  function closeExpandedNote() {
+    const note = expandedNote
+    if (!note) return
+    setOverlayClosing(true)
+    setLeavingId(note.id)
+    setTimeout(() => {
+      setExpandedNote(null)
+      setOverlayClosing(false)
+    }, 200)
+    setTimeout(() => {
+      onNoteRead(note.id)
+      setLeavingId((id) => (id === note.id ? null : id))
+    }, 320)
+  }
 
   function handleAdvanceBg() {
     setBgIndex((i) => (i + 1) % BG_IMAGES.length)
@@ -516,10 +541,6 @@ function NoteListView({ notes, error, onAddClick }) {
 
       {error && <p className="error">{error}</p>}
 
-      {visibleNotes.length === 0 && !error && (
-        <p className="empty-state">Chưa có note nào trong 24h qua. Hãy là người đầu tiên viết!</p>
-      )}
-
       <div className="notes-stage" onClick={handleAdvanceBg}>
         <BackgroundSlideshow index={bgIndex} />
         {notesHidden ? null : displayMode === 'scatter' ? (
@@ -531,6 +552,7 @@ function NoteListView({ notes, error, onAddClick }) {
                 index={index}
                 total={visibleNotes.length}
                 onClick={setExpandedNote}
+                leaving={note.id === leavingId}
               />
             ))}
           </div>
@@ -543,7 +565,13 @@ function NoteListView({ notes, error, onAddClick }) {
         )}
       </div>
 
-      {expandedNote && <NoteExpandOverlay note={expandedNote} onClose={() => setExpandedNote(null)} />}
+      {visibleNotes.length === 0 && !error && (
+        <p className="empty-state">Chưa có note nào trong 24h qua. Hãy là người đầu tiên viết!</p>
+      )}
+
+      {expandedNote && (
+        <NoteExpandOverlay note={expandedNote} onClose={closeExpandedNote} closing={overlayClosing} />
+      )}
 
       <button className="fab" onClick={onAddClick} aria-label="Thêm note" title="Thêm note">
         +
@@ -656,6 +684,13 @@ export default function App() {
   const [view, setView] = useState('list')
   const [notes, setNotes] = useState([])
   const [error, setError] = useState('')
+  // Notes closed after viewing are hidden for the rest of this browser
+  // session only — never persisted, so a reload brings them all back.
+  const [readNoteIds, setReadNoteIds] = useState(() => new Set())
+
+  function markNoteRead(noteId) {
+    setReadNoteIds((ids) => new Set(ids).add(noteId))
+  }
 
   const loadNotes = useCallback(async () => {
     try {
@@ -694,7 +729,13 @@ export default function App() {
           }}
         />
       ) : (
-        <NoteListView notes={notes} error={error} onAddClick={() => setView('create')} />
+        <NoteListView
+          notes={notes}
+          error={error}
+          onAddClick={() => setView('create')}
+          readNoteIds={readNoteIds}
+          onNoteRead={markNoteRead}
+        />
       )}
     </>
   )
