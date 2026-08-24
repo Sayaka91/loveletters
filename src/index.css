@@ -117,10 +117,12 @@ body::before {
   background: rgba(255, 255, 255, 0.22);
 }
 
-.nav-item-active {
-  background: #fff;
+.nav-item.nav-item-active {
+  background: rgba(238, 248, 245, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   color: var(--accent);
-  border-color: #fff;
+  border-color: rgba(238, 248, 245, 0.5);
 }
 
 .page {
@@ -427,7 +429,7 @@ h1 {
 }
 
 .note-card {
-  background: rgba(250, 240, 247, 0.5);
+  background: rgba(238, 248, 245, 0.5);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   padding: 14px 16px;
@@ -455,6 +457,12 @@ h1 {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Note list rows: a bit larger than the mini scatter card's compact text
+   (.note-meta-compact, 0.78rem/0.68rem), well below the 1.4rem default. */
+.note-content-list {
+  font-size: 0.95rem;
 }
 
 .see-more-btn {
@@ -552,7 +560,7 @@ h1 {
 }
 
 .topic-card {
-  background: rgba(250, 240, 247, 0.6);
+  background: rgba(238, 248, 245, 0.6);
   padding: 14px 16px;
   border-radius: 12px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);

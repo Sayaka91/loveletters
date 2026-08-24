@@ -166,9 +166,7 @@ function NoteScatterCard({ note, index, total, onClick }) {
         onClick(note)
       }}
     >
-      <p className="note-meta note-meta-compact">
-        {note.author} · {formatElapsed(note.createdAt)}
-      </p>
+      <p className="note-meta note-meta-compact">{note.author}</p>
     </div>
   )
 }
@@ -526,12 +524,7 @@ function NoteListView({ notes, error, onAddClick }) {
         ) : (
           <ul className="note-list note-list-scroll">
             {visibleNotes.map((note) => (
-              <li key={note.id} className="note-card">
-                <p className="note-content">{note.content}</p>
-                <p className="note-meta">
-                  — {note.author} · {formatElapsed(note.createdAt)}
-                </p>
-              </li>
+              <NoteListItem key={note.id} note={note} />
             ))}
           </ul>
         )}
@@ -543,6 +536,39 @@ function NoteListView({ notes, error, onAddClick }) {
         +
       </button>
     </div>
+  )
+}
+
+// Clamps note text to 2 lines with a "Xem thêm"/"Ẩn" toggle, only shown when
+// the text actually overflows those 2 lines. Mirrors ReplyItem's pattern.
+function NoteListItem({ note }) {
+  const [expanded, setExpanded] = useState(false)
+  const [isTruncated, setIsTruncated] = useState(false)
+  const contentRef = useRef(null)
+
+  useEffect(() => {
+    if (expanded) return
+    const el = contentRef.current
+    if (el) setIsTruncated(el.scrollHeight > el.clientHeight + 1)
+  }, [note.content, expanded])
+
+  return (
+    <li className="note-card">
+      <p
+        ref={contentRef}
+        className={'note-content note-content-list' + (expanded ? '' : ' note-content-clamped')}
+      >
+        {note.content}
+      </p>
+      {(isTruncated || expanded) && (
+        <button type="button" className="see-more-btn" onClick={() => setExpanded((e) => !e)}>
+          {expanded ? 'Ẩn' : 'Xem thêm'}
+        </button>
+      )}
+      <p className="note-meta">
+        — {note.author} · {formatElapsed(note.createdAt)}
+      </p>
+    </li>
   )
 }
 
