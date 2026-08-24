@@ -230,7 +230,6 @@ function TopicListView({ topics, error, onTopicClick, onBack }) {
         ←
       </button>
       <h1>Góc tâm sự</h1>
-      <p className="subtitle">Mở lòng một chút, không ai biết đó là ai đâu.</p>
 
       {error && <p className="error">{error}</p>}
 
@@ -266,7 +265,10 @@ function ReplyItem({ reply }) {
 
   return (
     <li className="note-card">
-      <p ref={contentRef} className={'note-content' + (expanded ? '' : ' note-content-clamped')}>
+      <p
+        ref={contentRef}
+        className={'note-content reply-content' + (expanded ? '' : ' note-content-clamped')}
+      >
         {reply.content}
       </p>
       {(isTruncated || expanded) && (
@@ -292,7 +294,7 @@ function TopicDetailView({ topic, replies, page, totalPages, error, onBack, onAd
       <button className="back-link" onClick={onBack} aria-label="Quay lại">
         ←
       </button>
-      <h1>{topic.title}</h1>
+      <h1 className="topic-detail-title">{topic.title}</h1>
       <p className="subtitle">Tạo {formatTopicElapsed(topic.createdAt)}</p>
 
       {error && <p className="error">{error}</p>}

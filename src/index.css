@@ -465,6 +465,17 @@ h1 {
   font-size: 0.95rem;
 }
 
+/* Topic detail title and reply text, both sized to match .topic-title
+   (1.3rem) as seen on the topic list screen, rather than the large
+   default h1 / 1.4rem note-content sizes. */
+.topic-detail-title {
+  font-size: 1.3rem;
+}
+
+.reply-content {
+  font-size: 1.05rem;
+}
+
 .see-more-btn {
   display: block;
   background: none;
