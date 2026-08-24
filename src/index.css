@@ -402,17 +402,6 @@ h1 {
   }
 }
 
-/* Plays while a note is closing after being read, before it's actually
-   removed — shrinks and fades out in place instead of vanishing instantly.
-   !important is needed to win over the per-card inline opacity/transform
-   (random rotation, stacking fade) set in NoteScatterCard. */
-.scatter-card.scatter-card-leaving {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-  opacity: 0 !important;
-  transform: scale(0.5) !important;
-  pointer-events: none;
-}
-
 @keyframes overlay-fade-in {
   from {
     opacity: 0;
