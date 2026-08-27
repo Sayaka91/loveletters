@@ -20,28 +20,45 @@ export default async function handler(req, res) {
   const topicId = req.query.id
 
   if (req.method === 'GET') {
-    // Count first so an out-of-range requested page (e.g. "load the last
-    // page" via a huge page number after posting a reply) clamps correctly.
-    const { count, error: countError } = await supabase
-      .from('replies')
-      .select('id', { count: 'exact', head: true })
-      .eq('topic_id', topicId)
-    if (countError) return res.status(500).json({ error: countError.message })
+    // Short edge cache so the app's 5s polling (and multiple tabs/devices
+    // polling the same topic) doesn't hit Supabase on every single request.
+    res.setHeader('Cache-Control', 's-maxage=2, stale-while-revalidate=8')
 
-    const total = count ?? 0
-    const totalPages = Math.max(1, Math.ceil(total / REPLIES_PAGE_SIZE))
+    // Fetch the requested page's rows and the total count in one round trip
+    // (Supabase returns both from a single query via { count: 'exact' })
+    // instead of a separate head-only count query before the real one.
+    // This only under-shoots when the requested page is out of range (e.g.
+    // the "load the last page" trick via a huge page number after posting
+    // a reply) — that rare case falls back to a second, corrected query.
     const requestedPage = Math.max(1, parseInt(req.query.page, 10) || 1)
-    const page = Math.min(requestedPage, totalPages)
-    const from = (page - 1) * REPLIES_PAGE_SIZE
-    const to = from + REPLIES_PAGE_SIZE - 1
+    let from = (requestedPage - 1) * REPLIES_PAGE_SIZE
+    let to = from + REPLIES_PAGE_SIZE - 1
 
-    const { data, error } = await supabase
+    let { data, count, error } = await supabase
       .from('replies')
-      .select('id, topic_id, content, created_at')
+      .select('id, topic_id, content, created_at', { count: 'exact' })
       .eq('topic_id', topicId)
       .order('created_at', { ascending: true })
       .range(from, to)
     if (error) return res.status(500).json({ error: error.message })
+
+    const total = count ?? 0
+    const totalPages = Math.max(1, Math.ceil(total / REPLIES_PAGE_SIZE))
+    const page = Math.min(requestedPage, totalPages)
+
+    if (page !== requestedPage) {
+      from = (page - 1) * REPLIES_PAGE_SIZE
+      to = from + REPLIES_PAGE_SIZE - 1
+      const corrected = await supabase
+        .from('replies')
+        .select('id, topic_id, content, created_at')
+        .eq('topic_id', topicId)
+        .order('created_at', { ascending: true })
+        .range(from, to)
+      if (corrected.error) return res.status(500).json({ error: corrected.error.message })
+      data = corrected.data
+    }
+
     return res.status(200).json({ replies: data.map(toApiReply), page, totalPages, total })
   }
 

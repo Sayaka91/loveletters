@@ -17,6 +17,10 @@ function toApiTopic(row) {
 // endpoint by design, this route only ever reads.
 export default async function handler(req, res) {
   if (req.method === 'GET') {
+    // Short edge cache so the app's 5s polling doesn't hit Supabase on
+    // every single request.
+    res.setHeader('Cache-Control', 's-maxage=2, stale-while-revalidate=8')
+
     // `replies(count)` uses PostgREST's embedded-resource count via the
     // topics <-> replies foreign key, avoiding a separate query per topic.
     const { data, error } = await supabase
