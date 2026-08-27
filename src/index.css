@@ -48,10 +48,10 @@ body::before {
 
 @keyframes sparkle-twinkle {
   from {
-    opacity: 0.35;
+    opacity: 0.55;
   }
   to {
-    opacity: 0.85;
+    opacity: 1;
   }
 }
 
@@ -165,8 +165,11 @@ body::before {
 .list-header {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-height: var(--header-gap);
+  gap: 20px;
+  /* header-gap + extra: the extra is purely for a bigger trailing gap
+     before the image — kept separate from --header-gap itself so it
+     doesn't feed into .notes-stage's height formula and shrink the image. */
+  min-height: calc(var(--header-gap) + 24px);
   padding-top: 16px;
   margin: 0;
 }
@@ -181,6 +184,19 @@ body::before {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* Wide enough for the subtitle and the controls to share one row without
+   the subtitle getting squeezed — back to the original single-row header. */
+@media (min-width: 601px) {
+  .list-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: var(--header-gap);
+    padding-top: 0;
+  }
 }
 
 .all-btn {
