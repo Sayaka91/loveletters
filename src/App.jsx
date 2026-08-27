@@ -244,7 +244,7 @@ function AppHeader({ activePage, onNavigate }) {
   )
 }
 
-function TopicListView({ topics, error, onTopicClick, onBack }) {
+function TopicListView({ topics, error, onTopicClick, onBack, loaded }) {
   return (
     <div className="page">
       <button className="back-link" onClick={onBack} aria-label="Quay lại">
@@ -254,7 +254,8 @@ function TopicListView({ topics, error, onTopicClick, onBack }) {
 
       {error && <p className="error">{error}</p>}
 
-      {topics.length === 0 && !error && <p className="empty-state">Chưa có chủ đề nào.</p>}
+      {!loaded && !error && <p className="empty-state">Đang tải...</p>}
+      {loaded && topics.length === 0 && !error && <p className="empty-state">Chưa có chủ đề nào.</p>}
 
       <ul className="topic-list">
         {topics.map((topic) => (
@@ -302,7 +303,17 @@ function ReplyItem({ reply }) {
   )
 }
 
-function TopicDetailView({ topic, replies, page, totalPages, error, onBack, onAddClick, onPageChange }) {
+function TopicDetailView({
+  topic,
+  replies,
+  page,
+  totalPages,
+  error,
+  onBack,
+  onAddClick,
+  onPageChange,
+  loaded
+}) {
   function goToPage(newPage) {
     onPageChange(newPage)
     // Instant, not smooth: the reply list's height changes as soon as the
@@ -320,7 +331,8 @@ function TopicDetailView({ topic, replies, page, totalPages, error, onBack, onAd
 
       {error && <p className="error">{error}</p>}
 
-      {replies.length === 0 && !error && <p className="empty-state">Chưa có câu trả lời nào.</p>}
+      {!loaded && !error && <p className="empty-state">Đang tải...</p>}
+      {loaded && replies.length === 0 && !error && <p className="empty-state">Chưa có câu trả lời nào.</p>}
 
       <ul className="note-list">
         {replies.map((reply) => (
@@ -412,9 +424,11 @@ function ReplyCreateView({ topic, onCancel, onCreated }) {
 function ConfessionPage({ onBack, pushScreen }) {
   const [view, setView] = useState('list')
   const [topics, setTopics] = useState([])
+  const [topicsLoaded, setTopicsLoaded] = useState(false)
   const [error, setError] = useState('')
   const [selectedTopic, setSelectedTopic] = useState(null)
   const [replies, setReplies] = useState([])
+  const [repliesLoaded, setRepliesLoaded] = useState(false)
   const [repliesError, setRepliesError] = useState('')
   const [repliesPage, setRepliesPage] = useState(1)
   const [repliesTotalPages, setRepliesTotalPages] = useState(1)
@@ -427,6 +441,8 @@ function ConfessionPage({ onBack, pushScreen }) {
       setError('')
     } catch (err) {
       setError('Không tải được chủ đề: ' + err.message)
+    } finally {
+      setTopicsLoaded(true)
     }
   }, [])
 
@@ -441,6 +457,8 @@ function ConfessionPage({ onBack, pushScreen }) {
       setRepliesError('')
     } catch (err) {
       setRepliesError('Không tải được câu trả lời: ' + err.message)
+    } finally {
+      setRepliesLoaded(true)
     }
   }, [])
 
@@ -462,6 +480,7 @@ function ConfessionPage({ onBack, pushScreen }) {
     pushScreen(() => setView('list'))
     setSelectedTopic(topic)
     setRepliesPage(1)
+    setRepliesLoaded(false)
     setView('detail')
   }
 
@@ -473,6 +492,7 @@ function ConfessionPage({ onBack, pushScreen }) {
         page={repliesPage}
         totalPages={repliesTotalPages}
         error={repliesError}
+        loaded={repliesLoaded}
         onBack={() => window.history.back()}
         onAddClick={() => {
           pushScreen(() => setView('detail'))
@@ -499,10 +519,18 @@ function ConfessionPage({ onBack, pushScreen }) {
     )
   }
 
-  return <TopicListView topics={topics} error={error} onTopicClick={openTopic} onBack={onBack} />
+  return (
+    <TopicListView
+      topics={topics}
+      error={error}
+      onTopicClick={openTopic}
+      onBack={onBack}
+      loaded={topicsLoaded}
+    />
+  )
 }
 
-function NoteListView({ notes, error, onAddClick }) {
+function NoteListView({ notes, error, onAddClick, loaded }) {
   const [displayMode, setDisplayMode] = useState('scatter')
   const [expandedNote, setExpandedNote] = useState(null)
   const [overlayClosing, setOverlayClosing] = useState(false)
@@ -585,6 +613,8 @@ function NoteListView({ notes, error, onAddClick }) {
           </ul>
         )}
       </div>
+
+      {!loaded && !error && <p className="empty-state">Đang tải...</p>}
 
       {expandedNote && (
         <NoteExpandOverlay note={expandedNote} onClose={closeExpandedNote} closing={overlayClosing} />
@@ -700,6 +730,7 @@ export default function App() {
   const [page, setPage] = useState('notes')
   const [view, setView] = useState('list')
   const [notes, setNotes] = useState([])
+  const [notesLoaded, setNotesLoaded] = useState(false)
   const [error, setError] = useState('')
   // Screens pushed onto browser history, deepest last. The phone/browser
   // back button fires 'popstate', which pops and runs whichever function
@@ -731,6 +762,8 @@ export default function App() {
       setError('')
     } catch (err) {
       setError('Không tải được note: ' + err.message)
+    } finally {
+      setNotesLoaded(true)
     }
   }, [])
 
@@ -781,6 +814,7 @@ export default function App() {
         <NoteListView
           notes={notes}
           error={error}
+          loaded={notesLoaded}
           onAddClick={() => {
             pushScreen(() => setView('list'))
             setView('create')
