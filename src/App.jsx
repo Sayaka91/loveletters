@@ -582,14 +582,6 @@ function NoteListView({ notes, error, onAddClick }) {
         )}
       </div>
 
-      {visibleNotes.length === 0 && !error && (
-        <p className="empty-state">
-          {selectedDate === todayKey
-            ? 'Chưa có note nào hôm nay. Hãy là người đầu tiên viết!'
-            : 'Không có note nào trong ngày này.'}
-        </p>
-      )}
-
       {expandedNote && (
         <NoteExpandOverlay note={expandedNote} onClose={closeExpandedNote} closing={overlayClosing} />
       )}

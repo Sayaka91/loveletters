@@ -169,7 +169,7 @@ body::before {
   /* header-gap + extra: the extra is purely for a bigger trailing gap
      before the image — kept separate from --header-gap itself so it
      doesn't feed into .notes-stage's height formula and shrink the image. */
-  min-height: calc(var(--header-gap) + 24px);
+  min-height: calc(var(--header-gap) + 8px);
   padding-top: 16px;
   margin: 0;
 }
