@@ -8,7 +8,6 @@ const BG_IMAGES = Object.entries(
 )
   .sort(([a], [b]) => a.localeCompare(b))
   .map(([, url]) => url)
-const VISIBLE_WINDOW_MS = 24 * 60 * 60 * 1000
 const MAX_VISIBLE_NOTES = 45
 
 // Elapsed time from note creation to now, e.g. "5m", "1h", "1h30m".
@@ -20,6 +19,25 @@ function formatElapsed(createdAtMs) {
   if (hours === 0) return `${minutes}m`
   if (minutes === 0) return `${hours}h`
   return `${hours}h${minutes}m`
+}
+
+// Local calendar-day key (YYYY-MM-DD) for a timestamp, used to group notes
+// by the day they were created on rather than a rolling time window.
+function formatDateKey(timestampMs) {
+  const d = new Date(timestampMs)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+// Clock time for a note's creation, e.g. "09:05", "23:41".
+function formatClockTime(createdAtMs) {
+  if (!createdAtMs) return ''
+  const d = new Date(createdAtMs)
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${hh}:${mm}`
 }
 
 // Elapsed time for topics, phrased as "X trước" (e.g. "5m trước"), collapsing
@@ -193,7 +211,7 @@ function NoteExpandOverlay({ note, onClose, closing }) {
       <div className="note-expand-card" onClick={(e) => e.stopPropagation()}>
         <p className="note-content">{note.content}</p>
         <p className="note-meta">
-          — {note.author} · {formatElapsed(note.createdAt)}
+          — {note.author} · {formatClockTime(note.createdAt)}
         </p>
       </div>
     </div>
@@ -486,8 +504,10 @@ function NoteListView({ notes, error, onAddClick }) {
   const [overlayClosing, setOverlayClosing] = useState(false)
   const [bgIndex, setBgIndex] = useState(0)
   const [notesHidden, setNotesHidden] = useState(false)
+  const todayKey = formatDateKey(Date.now())
+  const [selectedDate, setSelectedDate] = useState(todayKey)
   const visibleNotes = notes
-    .filter((note) => Date.now() - note.createdAt <= VISIBLE_WINDOW_MS)
+    .filter((note) => formatDateKey(note.createdAt) === selectedDate)
     .slice(0, MAX_VISIBLE_NOTES)
 
   // Plays the overlay's fade-out before actually unmounting it, instead of
@@ -510,6 +530,14 @@ function NoteListView({ notes, error, onAddClick }) {
       <div className="list-header">
         <p className="subtitle">Mỗi ngày một lời yêu &lt;3</p>
         <div className="list-header-actions">
+          <input
+            type="date"
+            className="date-picker"
+            value={selectedDate}
+            max={todayKey}
+            onChange={(e) => setSelectedDate(e.target.value || todayKey)}
+            aria-label="Chọn ngày xem note"
+          />
           <button
             className="all-btn"
             onClick={() => setNotesHidden((hidden) => !hidden)}
@@ -555,7 +583,11 @@ function NoteListView({ notes, error, onAddClick }) {
       </div>
 
       {visibleNotes.length === 0 && !error && (
-        <p className="empty-state">Chưa có note nào trong 24h qua. Hãy là người đầu tiên viết!</p>
+        <p className="empty-state">
+          {selectedDate === todayKey
+            ? 'Chưa có note nào hôm nay. Hãy là người đầu tiên viết!'
+            : 'Không có note nào trong ngày này.'}
+        </p>
       )}
 
       {expandedNote && (

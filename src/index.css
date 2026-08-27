@@ -147,24 +147,27 @@ body::before {
   justify-content: center;
 }
 
+/* Two stacked blocks (subtitle on top, controls below) rather than one
+   horizontal row — a single row doesn't leave the subtitle enough width
+   next to the date picker + icon buttons on narrow screens. */
 .list-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: 16px;
   min-height: var(--header-gap);
+  padding-top: 16px;
   margin: 0;
 }
 
 .list-header .subtitle {
   text-align: left;
   margin: 0;
-  font-size: 1.7rem;
+  font-size: 1.5rem;
 }
 
 .list-header-actions {
-  flex-shrink: 0;
   display: flex;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -191,6 +194,26 @@ body::before {
   background: var(--hover-soft);
   box-shadow: 0 5px 14px rgba(var(--accent-shadow), 0.32);
   transform: translateY(-1px);
+}
+
+.date-picker {
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 10px;
+  background: #fff;
+  color: var(--accent);
+  border: none;
+  border-radius: 20px;
+  box-shadow: 0 3px 10px rgba(var(--accent-shadow), 0.22);
+  font-family: 'Mali', cursive;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.date-picker:hover {
+  background: var(--hover-soft);
+  box-shadow: 0 5px 14px rgba(var(--accent-shadow), 0.32);
 }
 
 h1 {
