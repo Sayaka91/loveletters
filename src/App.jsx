@@ -692,9 +692,12 @@ export default function App() {
     return () => clearInterval(interval)
   }, [loadNotes, page, view])
 
+  // Clicking a nav item that's already active toggles back to the notes
+  // home screen instead of doing nothing.
   function handleNavigate(key) {
-    setPage(key)
-    if (key === 'notes') setView('list')
+    const nextPage = page === key ? 'notes' : key
+    setPage(nextPage)
+    if (nextPage === 'notes') setView('list')
   }
 
   return (
