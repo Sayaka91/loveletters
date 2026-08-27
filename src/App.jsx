@@ -409,7 +409,7 @@ function ReplyCreateView({ topic, onCancel, onCreated }) {
 
 // Owns its own list/detail/create navigation so App() only needs to mount it
 // for the 'confession' page, same as NoteListView owns scatter/list toggling.
-function ConfessionPage({ onBack }) {
+function ConfessionPage({ onBack, pushScreen }) {
   const [view, setView] = useState('list')
   const [topics, setTopics] = useState([])
   const [error, setError] = useState('')
@@ -459,6 +459,7 @@ function ConfessionPage({ onBack }) {
   }, [loadReplies, view, selectedTopic, repliesPage])
 
   function openTopic(topic) {
+    pushScreen(() => setView('list'))
     setSelectedTopic(topic)
     setRepliesPage(1)
     setView('detail')
@@ -472,8 +473,11 @@ function ConfessionPage({ onBack }) {
         page={repliesPage}
         totalPages={repliesTotalPages}
         error={repliesError}
-        onBack={() => setView('list')}
-        onAddClick={() => setView('create-reply')}
+        onBack={() => window.history.back()}
+        onAddClick={() => {
+          pushScreen(() => setView('detail'))
+          setView('create-reply')
+        }}
         onPageChange={setRepliesPage}
       />
     )
@@ -483,13 +487,13 @@ function ConfessionPage({ onBack }) {
     return (
       <ReplyCreateView
         topic={selectedTopic}
-        onCancel={() => setView('detail')}
+        onCancel={() => window.history.back()}
         onCreated={async () => {
           // A new reply always lands on the last page (replies are ordered
           // oldest-first) — request a page far beyond what's known and let
           // the API clamp it down to the real last page.
           await loadReplies(selectedTopic.id, Number.MAX_SAFE_INTEGER)
-          setView('detail')
+          window.history.back()
         }}
       />
     )
@@ -697,6 +701,27 @@ export default function App() {
   const [view, setView] = useState('list')
   const [notes, setNotes] = useState([])
   const [error, setError] = useState('')
+  // Screens pushed onto browser history, deepest last. The phone/browser
+  // back button fires 'popstate', which pops and runs whichever function
+  // is on top — so back always returns to the previous in-app screen
+  // instead of exiting the site. Empty stack means we're at the notes
+  // home screen, so an unhandled back there falls through and actually
+  // exits, which is correct.
+  const backStackRef = useRef([])
+
+  function pushScreen(onBack) {
+    window.history.pushState({ appNav: true }, '')
+    backStackRef.current.push(onBack)
+  }
+
+  useEffect(() => {
+    function handlePopState() {
+      const onBack = backStackRef.current.pop()
+      if (onBack) onBack()
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
 
   const loadNotes = useCallback(async () => {
     try {
@@ -720,25 +745,47 @@ export default function App() {
   // home screen instead of doing nothing.
   function handleNavigate(key) {
     const nextPage = page === key ? 'notes' : key
+    if (nextPage === 'notes') {
+      // Going home (brand click, or toggling the active nav item off):
+      // unwind any pushed screens (e.g. confession sub-views) and correct
+      // the browser history position to match, instead of leaving stale
+      // entries that a later physical back-press would misinterpret.
+      const depth = backStackRef.current.length
+      backStackRef.current = []
+      if (depth > 0) window.history.go(-depth)
+      setPage('notes')
+      setView('list')
+      return
+    }
+    pushScreen(() => {
+      setPage('notes')
+      setView('list')
+    })
     setPage(nextPage)
-    if (nextPage === 'notes') setView('list')
   }
 
   return (
     <>
       <AppHeader activePage={page} onNavigate={handleNavigate} />
       {page === 'confession' ? (
-        <ConfessionPage onBack={() => handleNavigate('notes')} />
+        <ConfessionPage onBack={() => window.history.back()} pushScreen={pushScreen} />
       ) : view === 'create' ? (
         <NoteCreateView
-          onCancel={() => setView('list')}
+          onCancel={() => window.history.back()}
           onCreated={async () => {
             await loadNotes()
-            setView('list')
+            window.history.back()
           }}
         />
       ) : (
-        <NoteListView notes={notes} error={error} onAddClick={() => setView('create')} />
+        <NoteListView
+          notes={notes}
+          error={error}
+          onAddClick={() => {
+            pushScreen(() => setView('list'))
+            setView('create')
+          }}
+        />
       )}
     </>
   )
