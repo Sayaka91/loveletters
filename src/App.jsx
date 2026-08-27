@@ -8,7 +8,7 @@ const BG_IMAGES = Object.entries(
 )
   .sort(([a], [b]) => a.localeCompare(b))
   .map(([, url]) => url)
-const MAX_VISIBLE_NOTES = 45
+const MAX_VISIBLE_NOTES = 99
 
 // Elapsed time from note creation to now, e.g. "5m", "1h", "1h30m".
 function formatElapsed(createdAtMs) {
