@@ -162,6 +162,32 @@ function EyeOffIcon({ size = 18 }) {
   )
 }
 
+// Same glyph as the .date-picker::-webkit-calendar-picker-indicator SVG
+// (index.css) — drawn as a real icon here so it can be centered with
+// ordinary flexbox instead of depending on how a given browser positions
+// that indicator pseudo-element once the date text next to it is hidden
+// (see the date-picker-icon-only overlay in NoteListView).
+function CalendarIcon({ size = 16 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+      <line x1="8" y1="3" x2="8" y2="7" />
+      <line x1="16" y1="3" x2="16" y2="7" />
+    </svg>
+  )
+}
+
 function HandPetIcon({ size = 20 }) {
   return (
     <span
@@ -890,6 +916,70 @@ function NoteListView({ notes, error, onAddClick, loaded, readNoteIds, onNoteRea
   const todayKey = formatDateKey(Date.now())
   const [selectedDate, setSelectedDate] = useState(todayKey)
   const maxVisibleNotes = useMaxVisibleNotes()
+  const actionsRef = useRef(null)
+  const naturalActionsWidthRef = useRef(null)
+  const [dateIconOnly, setDateIconOnly] = useState(false)
+
+  // Collapses the date-picker to an icon (no visible day/month/year text)
+  // only once the header controls genuinely don't fit their available
+  // width — instead of guessing a fixed screen-width breakpoint, which
+  // wouldn't catch e.g. a larger OS/browser font size doing the same thing
+  // at an otherwise "fine" viewport width.
+  //
+  // Measures .list-header (this row's parent) instead of the actions row
+  // itself: .list-header-actions has no explicit width, so it always
+  // shrink-wraps to fit whatever it's currently showing — once collapsed,
+  // its own clientWidth shrinks right along with it and permanently looks
+  // "not overflowing" even with plenty of room to spare. .list-header's
+  // width comes from the page layout instead, unaffected by its child's
+  // collapsed/expanded state, so it's safe to compare against.
+  //
+  // naturalActionsWidthRef freezes the row's fully-expanded width the
+  // first time it's measured (buttons are fixed-size circles and the date
+  // text is always the same DD/MM/YYYY digit count, so this stays valid)
+  // — comparing against a frozen baseline instead of re-measuring the
+  // already-collapsed row avoids flip-flopping between the two states.
+  useEffect(() => {
+    const el = actionsRef.current
+    const header = el && el.parentElement
+    if (!el || !header) return
+
+    function measureAndDecide() {
+      const headerWidth = header.clientWidth
+      // 0 means this hasn't actually been laid out yet (e.g. a hidden
+      // ancestor, or a stray callback firing before the first real
+      // layout) rather than a genuinely 0px-wide screen — skip it
+      // instead of freezing a bogus "always collapsed" baseline.
+      if (headerWidth === 0) return
+
+      const isRow = getComputedStyle(header).flexDirection === 'row'
+      let availableWidth = headerWidth
+      if (isRow) {
+        // Side by side with the subtitle (desktop/tablet) — only the
+        // leftover width after it (and the row's own gap) is actually
+        // available to the actions row.
+        const subtitle = header.querySelector('.subtitle')
+        const headerGap = parseFloat(getComputedStyle(header).columnGap) || 0
+        availableWidth -= (subtitle ? subtitle.getBoundingClientRect().width : 0) + headerGap
+      }
+
+      if (naturalActionsWidthRef.current == null && !dateIconOnly) {
+        const children = [...el.children]
+        const gapTotal = 8 * Math.max(0, children.length - 1)
+        naturalActionsWidthRef.current =
+          children.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0) + gapTotal
+      }
+      if (naturalActionsWidthRef.current != null) {
+        setDateIconOnly(availableWidth < naturalActionsWidthRef.current)
+      }
+    }
+
+    measureAndDecide()
+    const observer = new ResizeObserver(measureAndDecide)
+    observer.observe(header)
+    return () => observer.disconnect()
+  }, [dateIconOnly])
+
   const todaysNotes = notes.filter((note) => formatDateKey(note.createdAt) === selectedDate)
   const dateNoteCount = todaysNotes.length
   const visibleNotes = todaysNotes.filter((note) => !readNoteIds.has(note.id)).slice(0, maxVisibleNotes)
@@ -932,15 +1022,22 @@ function NoteListView({ notes, error, onAddClick, loaded, readNoteIds, onNoteRea
       <InteractionOverlay mode={interactionMode} />
       <div className="list-header">
         <p className="subtitle">Mỗi ngày một lời yêu &lt;3</p>
-        <div className="list-header-actions">
-          <input
-            type="date"
-            className="date-picker"
-            value={selectedDate}
-            max={todayKey}
-            onChange={(e) => setSelectedDate(e.target.value || todayKey)}
-            aria-label="Chọn ngày xem note"
-          />
+        <div className="list-header-actions" ref={actionsRef}>
+          <div className={'date-picker-wrap' + (dateIconOnly ? ' date-picker-icon-only' : '')}>
+            <input
+              type="date"
+              className={'date-picker' + (dateIconOnly ? ' date-picker-icon-only' : '')}
+              value={selectedDate}
+              max={todayKey}
+              onChange={(e) => setSelectedDate(e.target.value || todayKey)}
+              aria-label="Chọn ngày xem note"
+            />
+            {dateIconOnly && (
+              <span className="date-picker-icon-overlay">
+                <CalendarIcon />
+              </span>
+            )}
+          </div>
           <button
             className={'all-btn' + (interactionMode === 'pet' ? ' all-btn-active' : '')}
             onClick={() => setInteractionMode((m) => (m === 'pet' ? null : 'pet'))}
@@ -1295,43 +1392,45 @@ function QuizGate({ onPass }) {
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit}>
-            {questions.map((q, idx) => (
-              <div key={q.id || idx} className="quiz-question">
-                <p className="quiz-q-label">Câu {idx + 1}:</p>
-                <p className="quiz-q-text">
-                  {q.question}
-                  {q.hint && <span className="quiz-hint"> {q.hint}</span>}
-                </p>
+          <form className="quiz-form" onSubmit={handleSubmit}>
+            <div className="quiz-questions-scroll">
+              {questions.map((q, idx) => (
+                <div key={q.id || idx} className="quiz-question">
+                  <p className="quiz-q-label">Câu {idx + 1}:</p>
+                  <p className="quiz-q-text">
+                    {q.question}
+                    {q.hint && <span className="quiz-hint"> {q.hint}</span>}
+                  </p>
 
-                {q.type === 'choice' && Array.isArray(q.options) && (
-                  <div className="quiz-options">
-                    {q.options.map((opt) => (
-                      <button
-                        key={opt.value + opt.label}
-                        type="button"
-                        className={'quiz-option' + (answers[q.id] === opt.value ? ' quiz-option-selected' : '')}
-                        onClick={() => handleAnswerChange(q.id, opt.value)}
-                      >
-                        <span className="quiz-option-label">{opt.label}.</span>
-                        {opt.text}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                  {q.type === 'choice' && Array.isArray(q.options) && (
+                    <div className="quiz-options">
+                      {q.options.map((opt) => (
+                        <button
+                          key={opt.value + opt.label}
+                          type="button"
+                          className={'quiz-option' + (answers[q.id] === opt.value ? ' quiz-option-selected' : '')}
+                          onClick={() => handleAnswerChange(q.id, opt.value)}
+                        >
+                          <span className="quiz-option-label">{opt.label}.</span>
+                          {opt.text}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
-                {q.type === 'text' && (
-                  <input
-                    type="text"
-                    className="quiz-input"
-                    placeholder={q.placeholder || 'Nhập câu trả lời...'}
-                    value={answers[q.id] || ''}
-                    onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                    maxLength={100}
-                  />
-                )}
-              </div>
-            ))}
+                  {q.type === 'text' && (
+                    <input
+                      type="text"
+                      className="quiz-input"
+                      placeholder={q.placeholder || 'Nhập câu trả lời...'}
+                      value={answers[q.id] || ''}
+                      onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                      maxLength={100}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
 
             {error && <p className="quiz-error">{error}</p>}
 

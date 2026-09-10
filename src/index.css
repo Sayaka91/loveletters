@@ -184,6 +184,10 @@ body::before {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  /* Backstop for the one frame before the icon-only collapse (see
+     NoteListView) kicks in on resize — clips quietly instead of visibly
+     overlapping the subtitle. */
+  overflow: hidden;
 }
 
 /* Wide enough for the subtitle and the controls to share one row without
@@ -255,6 +259,54 @@ body::before {
 .date-picker:hover {
   background: var(--hover-soft);
   box-shadow: 0 5px 14px rgba(var(--accent-shadow), 0.32);
+}
+
+/* Applied (via NoteListView's overflow check) when the header controls
+   don't fit their available width — shrinks to the same 40px circle as
+   the icon buttons next to it and hides the day/month/year text, keeping
+   only a calendar glyph visible. Still a fully working date input
+   underneath; just visually collapsed. */
+.date-picker-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.date-picker-icon-only.date-picker {
+  width: 40px;
+  padding: 0;
+}
+
+/* color:transparent alone doesn't hide these — the day/month/year fields
+   don't take their color from the input the way ordinary text does —
+   font-size:0 collapses them to nothing instead. */
+.date-picker-icon-only::-webkit-datetime-edit-fields-wrapper,
+.date-picker-icon-only::-webkit-datetime-edit-text,
+.date-picker-icon-only::-webkit-datetime-edit-day-field,
+.date-picker-icon-only::-webkit-datetime-edit-month-field,
+.date-picker-icon-only::-webkit-datetime-edit-year-field {
+  font-size: 0;
+}
+
+/* The glyph shown is CalendarIcon (App.jsx), centered here with ordinary
+   flexbox, rather than the real ::-webkit-calendar-picker-indicator —
+   that pseudo-element's own position (regardless of background-position,
+   which only places the glyph *within* its box) is set by each browser's
+   internal layout once the date text next to it is hidden, and isn't
+   reliably centered by any standard means. The real input (and its real
+   indicator) stays underneath, fully clickable/functional — just made
+   invisible so only the overlay glyph shows. */
+.date-picker-icon-only::-webkit-calendar-picker-indicator {
+  opacity: 0;
+}
+
+.date-picker-icon-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  pointer-events: none;
 }
 
 h1 {
@@ -781,6 +833,36 @@ h1 {
     0 20px 50px rgba(61, 122, 153, 0.16),
     0 1px 3px rgba(0, 0, 0, 0.06);
   animation: quiz-card-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  /* Caps the card at the viewport height (minus .quiz-gate's 16px*2
+     padding) instead of letting it grow past the screen on short/mobile
+     viewports — questions scroll internally (.quiz-questions-scroll)
+     while the submit button below stays pinned in view. */
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+}
+
+.quiz-form {
+  display: flex;
+  flex-direction: column;
+  /* min-height: 0 overrides flex's default min-height:auto, which would
+     otherwise let this grow to fit all questions instead of respecting
+     .quiz-card's max-height and letting quiz-questions-scroll scroll. */
+  min-height: 0;
+  flex: 1;
+}
+
+.quiz-questions-scroll {
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.quiz-questions-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 @keyframes quiz-card-enter {
@@ -955,15 +1037,18 @@ h1 {
   text-align: center;
   color: #c0392b;
   font-size: 0.95rem;
-  margin: 0 0 14px;
+  margin: 12px 0 14px;
   font-weight: 700;
   animation: quiz-card-enter 0.3s ease;
+  flex-shrink: 0;
 }
 
 .quiz-submit-btn {
   display: block;
   width: 100%;
   padding: 13px;
+  margin-top: 12px;
+  flex-shrink: 0;
   background: var(--gradient-brand);
   color: #fff;
   border: none;
