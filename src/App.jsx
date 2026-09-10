@@ -162,6 +162,301 @@ function EyeOffIcon({ size = 18 }) {
   )
 }
 
+function HandPetIcon({ size = 20 }) {
+  return (
+    <span
+      style={{
+        fontSize: `${size}px`,
+        lineHeight: 1,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        userSelect: 'none'
+      }}
+      aria-hidden="true"
+    >
+      🫳
+    </span>
+  )
+}
+
+function HandPinchIcon({ size = 20 }) {
+  return (
+    <span
+      style={{
+        fontSize: `${size}px`,
+        lineHeight: 1,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        userSelect: 'none'
+      }}
+      aria-hidden="true"
+    >
+      🤏
+    </span>
+  )
+}
+
+function InteractionOverlay({ mode }) {
+  const active = Boolean(mode)
+  const [pos, setPos] = useState({ x: -200, y: -200 })
+  const [isHolding, setIsHolding] = useState(false)
+  const [isPatting, setIsPatting] = useState(false)
+  const [particles, setParticles] = useState([])
+  const [showToast, setShowToast] = useState(false)
+  const isHoldingRef = useRef(false)
+  const lastSpawnRef = useRef({ x: 0, y: 0, time: 0 })
+  const pattingTimeoutRef = useRef(null)
+
+  // Toggle body cursor: none class
+  useEffect(() => {
+    if (active) {
+      document.body.classList.add('petting-mode-active')
+    } else {
+      document.body.classList.remove('petting-mode-active')
+    }
+    return () => {
+      document.body.classList.remove('petting-mode-active')
+    }
+  }, [active])
+
+  useEffect(() => {
+    if (!active) {
+      setParticles([])
+      setShowToast(false)
+      setIsHolding(false)
+      setIsPatting(false)
+      isHoldingRef.current = false
+      setPos({ x: -200, y: -200 })
+      return
+    }
+
+    setShowToast(true)
+    const toastTimer = setTimeout(() => setShowToast(false), 3000)
+
+    function spawnParticles(x, y, burstCount = null) {
+      const isPinch = mode === 'pinch'
+      const newBatch = []
+
+      if (isPinch) {
+        // Pinch mode: spawn "đủ ời, đau nha=))"
+        const count = burstCount || 1
+        for (let i = 0; i < count; i++) {
+          const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
+          const angle = Math.random() * Math.PI * 2
+          const distance = 30 + Math.random() * 50
+          const vx = Math.cos(angle) * distance
+          const vy = -35 - Math.random() * 55
+          const rotStart = (Math.random() * 20 - 10).toFixed(1)
+          const rotDelta = (Math.random() * 30 - 15).toFixed(1)
+
+          newBatch.push({
+            id,
+            x: x + (Math.random() * 16 - 8),
+            y: y + (Math.random() * 16 - 8),
+            vx,
+            vy,
+            rotStart,
+            rotDelta,
+            type: 'text',
+            text: 'đủ ời, đau nha=))'
+          })
+        }
+      } else {
+        // Pet mode: 🌸 🥑 🩵 ✨
+        const emojis = ['🌸', '🥑', '🩵', '✨', '🌸', '🥑', '🩵', '✨']
+        const count = burstCount || (Math.random() < 0.65 ? 2 : 1)
+
+        for (let i = 0; i < count; i++) {
+          const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
+          const angle = Math.random() * Math.PI * 2
+          const distance = 40 + Math.random() * 65
+          const vx = Math.cos(angle) * distance
+          const vy = -35 - Math.random() * 65 // Bias upwards
+          const rotStart = (Math.random() * 40 - 20).toFixed(1)
+          const rotDelta = (Math.random() * 120 - 60).toFixed(1)
+          const emoji = emojis[Math.floor(Math.random() * emojis.length)]
+          const size = (1.3 + Math.random() * 0.7).toFixed(2)
+
+          newBatch.push({
+            id,
+            x: x + (Math.random() * 20 - 10),
+            y: y + (Math.random() * 20 - 10),
+            vx,
+            vy,
+            rotStart,
+            rotDelta,
+            type: 'emoji',
+            emoji,
+            size
+          })
+        }
+      }
+
+      setParticles((prev) => [...prev.slice(-30), ...newBatch])
+    }
+
+    function handlePointerDown(e) {
+      if (e.button && e.button !== 0) return
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY
+      if (typeof clientX !== 'number' || typeof clientY !== 'number') return
+
+      isHoldingRef.current = true
+      setIsHolding(true)
+      setIsPatting(true)
+      setPos({ x: clientX, y: clientY })
+      lastSpawnRef.current = { x: clientX, y: clientY, time: performance.now() }
+      spawnParticles(clientX, clientY, mode === 'pinch' ? 1 : 3)
+    }
+
+    function handlePointerMove(e) {
+      const isTouch = !!e.touches && e.touches.length > 0
+      const isMouseDown = (e.buttons & 1) === 1
+      const isPressed = isMouseDown || isTouch
+
+      const clientX = isTouch ? e.touches[0].clientX : e.clientX
+      const clientY = isTouch ? e.touches[0].clientY : e.clientY
+      if (typeof clientX !== 'number' || typeof clientY !== 'number') return
+
+      setPos({ x: clientX, y: clientY })
+
+      if (!isPressed) {
+        if (isHoldingRef.current) {
+          isHoldingRef.current = false
+          setIsHolding(false)
+          setIsPatting(false)
+        }
+        return
+      }
+
+      isHoldingRef.current = true
+      setIsHolding(true)
+      setIsPatting(true)
+
+      if (pattingTimeoutRef.current) clearTimeout(pattingTimeoutRef.current)
+      pattingTimeoutRef.current = setTimeout(() => setIsPatting(false), 220)
+
+      const now = performance.now()
+      const dx = clientX - lastSpawnRef.current.x
+      const dy = clientY - lastSpawnRef.current.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+
+      const minDistance = mode === 'pinch' ? 35 : 22
+      const minInterval = mode === 'pinch' ? 220 : 90
+
+      if (dist > minDistance || (now - lastSpawnRef.current.time > minInterval && dist > 10)) {
+        lastSpawnRef.current = { x: clientX, y: clientY, time: now }
+        spawnParticles(clientX, clientY)
+      }
+    }
+
+    function handlePointerUp() {
+      isHoldingRef.current = false
+      setIsHolding(false)
+      setIsPatting(false)
+    }
+
+    window.addEventListener('mousedown', handlePointerDown, { passive: true })
+    window.addEventListener('mousemove', handlePointerMove, { passive: true })
+    window.addEventListener('mouseup', handlePointerUp, { passive: true })
+    window.addEventListener('mouseleave', handlePointerUp, { passive: true })
+    window.addEventListener('blur', handlePointerUp, { passive: true })
+
+    window.addEventListener('touchstart', handlePointerDown, { passive: true })
+    window.addEventListener('touchmove', handlePointerMove, { passive: true })
+    window.addEventListener('touchend', handlePointerUp, { passive: true })
+    window.addEventListener('touchcancel', handlePointerUp, { passive: true })
+
+    return () => {
+      clearTimeout(toastTimer)
+      if (pattingTimeoutRef.current) clearTimeout(pattingTimeoutRef.current)
+      window.removeEventListener('mousedown', handlePointerDown)
+      window.removeEventListener('mousemove', handlePointerMove)
+      window.removeEventListener('mouseup', handlePointerUp)
+      window.removeEventListener('mouseleave', handlePointerUp)
+      window.removeEventListener('blur', handlePointerUp)
+      window.removeEventListener('touchstart', handlePointerDown)
+      window.removeEventListener('touchmove', handlePointerMove)
+      window.removeEventListener('touchend', handlePointerUp)
+      window.removeEventListener('touchcancel', handlePointerUp)
+    }
+  }, [active, mode])
+
+  // Cleanup old particles from DOM
+  useEffect(() => {
+    if (particles.length === 0) return
+    const timer = setTimeout(() => {
+      setParticles((prev) => prev.slice(5))
+    }, 900)
+    return () => clearTimeout(timer)
+  }, [particles])
+
+  if (!active) return null
+
+  const isPinch = mode === 'pinch'
+  const handEmoji = isPinch ? '🤏' : '🫳'
+  const followerAnimClass = isPatting ? (isPinch ? ' is-pinching' : ' is-patting') : ''
+
+  return (
+    <div className="petting-overlay" aria-hidden="true">
+      {showToast && (
+        <div className="petting-toast">
+          {isPinch
+            ? '🤏 Chế độ véo má: Nhấn giữ chuột và chà lên ảnh idol nhé! =))'
+            : '🫳 Nhấn giữ chuột và chà lên ảnh để xoa đầu idol nhé! 🌸🥑🩵✨'}
+        </div>
+      )}
+
+      {pos.x >= 0 && (
+        <div
+          className={'petting-follower' + followerAnimClass}
+          style={{ left: `${pos.x}px`, top: `${pos.y - 12}px` }}
+        >
+          {handEmoji}
+        </div>
+      )}
+
+      {particles.map((p) =>
+        p.type === 'text' ? (
+          <div
+            key={p.id}
+            className="pinch-text-particle"
+            style={{
+              left: `${p.x}px`,
+              top: `${p.y}px`,
+              '--vx': `${p.vx}px`,
+              '--vy': `${p.vy}px`,
+              '--rot-start': `${p.rotStart}deg`,
+              '--rot-delta': `${p.rotDelta}deg`
+            }}
+          >
+            {p.text}
+          </div>
+        ) : (
+          <div
+            key={p.id}
+            className="petting-particle"
+            style={{
+              left: `${p.x}px`,
+              top: `${p.y}px`,
+              fontSize: `${p.size}rem`,
+              '--vx': `${p.vx}px`,
+              '--vy': `${p.vy}px`,
+              '--rot-start': `${p.rotStart}deg`,
+              '--rot-delta': `${p.rotDelta}deg`
+            }}
+          >
+            {p.emoji}
+          </div>
+        )
+      )}
+    </div>
+  )
+}
+
 // Cross-fades to the next image in BG_IMAGES (looping back to the first)
 // each time the caller advances `index` — driven by a click on the stage,
 // not a timer.
@@ -316,7 +611,7 @@ function TopicListView({ topics, error, onTopicClick, onBack, loaded }) {
           <li key={topic.id} className="topic-card" onClick={() => onTopicClick(topic)}>
             <p className="topic-title">{topic.title}</p>
             <div className="topic-meta-row">
-              <span className="topic-reply-count">{topic.replyCount} trả lời</span>
+              <span className="topic-reply-count">{topic.replyCount} tình iu gửi đến bạn học Nguyễn Mạnh Cường</span>
               <span className="note-meta">{formatTopicElapsed(topic.createdAt)}</span>
             </div>
           </li>
@@ -591,10 +886,12 @@ function NoteListView({ notes, error, onAddClick, loaded, readNoteIds, onNoteRea
   const [leavingId, setLeavingId] = useState(null)
   const [bgIndex, setBgIndex] = useState(0)
   const [notesHidden, setNotesHidden] = useState(false)
+  const [interactionMode, setInteractionMode] = useState(null)
   const todayKey = formatDateKey(Date.now())
   const [selectedDate, setSelectedDate] = useState(todayKey)
   const maxVisibleNotes = useMaxVisibleNotes()
   const todaysNotes = notes.filter((note) => formatDateKey(note.createdAt) === selectedDate)
+  const dateNoteCount = todaysNotes.length
   const visibleNotes = todaysNotes.filter((note) => !readNoteIds.has(note.id)).slice(0, maxVisibleNotes)
 
   // Each note's scatter position is keyed off its rank here, oldest-first
@@ -632,6 +929,7 @@ function NoteListView({ notes, error, onAddClick, loaded, readNoteIds, onNoteRea
 
   return (
     <div className="page page-list">
+      <InteractionOverlay mode={interactionMode} />
       <div className="list-header">
         <p className="subtitle">Mỗi ngày một lời yêu &lt;3</p>
         <div className="list-header-actions">
@@ -643,6 +941,22 @@ function NoteListView({ notes, error, onAddClick, loaded, readNoteIds, onNoteRea
             onChange={(e) => setSelectedDate(e.target.value || todayKey)}
             aria-label="Chọn ngày xem note"
           />
+          <button
+            className={'all-btn' + (interactionMode === 'pet' ? ' all-btn-active' : '')}
+            onClick={() => setInteractionMode((m) => (m === 'pet' ? null : 'pet'))}
+            aria-label={interactionMode === 'pet' ? 'Tắt chế độ xoa đầu' : 'Bật chế độ xoa đầu 🫳'}
+            title={interactionMode === 'pet' ? 'Tắt chế độ xoa đầu' : 'Bật chế độ xoa đầu 🫳'}
+          >
+            <HandPetIcon size={20} />
+          </button>
+          <button
+            className={'all-btn' + (interactionMode === 'pinch' ? ' all-btn-active-pinch' : '')}
+            onClick={() => setInteractionMode((m) => (m === 'pinch' ? null : 'pinch'))}
+            aria-label={interactionMode === 'pinch' ? 'Tắt chế độ véo má' : 'Bật chế độ véo má 🤏'}
+            title={interactionMode === 'pinch' ? 'Tắt chế độ véo má' : 'Bật chế độ véo má 🤏'}
+          >
+            <HandPinchIcon size={20} />
+          </button>
           <button
             className="all-btn"
             onClick={() => setNotesHidden((hidden) => !hidden)}
@@ -688,6 +1002,10 @@ function NoteListView({ notes, error, onAddClick, loaded, readNoteIds, onNoteRea
           </ul>
         )}
       </div>
+
+      <p className="love-count-text">
+        Hôm nay có <span className="love-count-number">{dateNoteCount}</span> tình iu gửi đến bạn học Nguyễn Mạnh Cường
+      </p>
 
       {!loaded && !error && <p className="empty-state">Đang tải...</p>}
 
@@ -801,7 +1119,238 @@ function NoteCreateView({ onCancel, onCreated }) {
   )
 }
 
+const DEFAULT_QUIZ = {
+  title: '🔒 Em là ai?',
+  subtitle: 'Trả lời đúng các câu hỏi để vào trang nhé!',
+  timeLimit: 30,
+  questions: [
+    {
+      id: 'q1',
+      type: 'choice',
+      question: 'Ngày 14 Casper chính thức debut theo đuổi sự nghiệp âm nhạc?',
+      options: [
+        { label: 'A', text: '19/8/2019', value: '19/8/2019' },
+        { label: 'B', text: '18/9/2018', value: '18/9/2018' },
+        { label: 'C', text: '19/8/2018', value: '19/8/2018' },
+        { label: 'D', text: '18/9/2019', value: '18/9/2019' }
+      ]
+    },
+    {
+      id: 'q2',
+      type: 'text',
+      question: 'MV solo cá nhân mới ra mắt của 14 Casper gần đây nhất?',
+      hint: '(viết hoa đầu các chữ)',
+      placeholder: 'Nhập tên MV...'
+    },
+    {
+      id: 'q3',
+      type: 'choice',
+      question: 'MV nào của 14 Casper chạm mốc 100tr views đầu tiên?',
+      options: [
+        { label: 'A', text: 'Một Đời', value: 'Một Đời' },
+        { label: 'B', text: 'Bao Tiền Một Mớ Bình Yên', value: 'Bao Tiền Một Mớ Bình Yên' },
+        { label: 'C', text: 'Người Tốt Nhất Cho Em', value: 'Người Tốt Nhất Cho Em' },
+        { label: 'D', text: 'Có Ai Ở Đây Không', value: 'Có Ai Ở Đây Không' }
+      ]
+    }
+  ]
+}
+
+function QuizGate({ onPass }) {
+  const [quiz, setQuiz] = useState(DEFAULT_QUIZ)
+  const [answers, setAnswers] = useState({})
+  const [timeLeft, setTimeLeft] = useState(30)
+  const [error, setError] = useState('')
+  const [shaking, setShaking] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  // Fetch quiz questions from data file via backend
+  useEffect(() => {
+    fetch('/api/quiz')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && Array.isArray(data.questions) && data.questions.length > 0) {
+          setQuiz(data)
+          if (data.timeLimit && typeof data.timeLimit === 'number') {
+            setTimeLeft(data.timeLimit)
+          }
+        }
+      })
+      .catch(() => {
+        // Fallback to DEFAULT_QUIZ
+      })
+  }, [])
+
+  useEffect(() => {
+    if (timeLeft <= 0) return
+    const timer = setTimeout(() => setTimeLeft((t) => t - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [timeLeft])
+
+  // Block copy, right-click, screenshots, and dev-tools while quiz is active
+  useEffect(() => {
+    function blockCopy(e) { e.preventDefault() }
+    function blockContext(e) { e.preventDefault() }
+    function blockKeys(e) {
+      const k = e.key.toLowerCase()
+      if (
+        e.key === 'PrintScreen' ||
+        (e.ctrlKey && ['c', 'a', 'p', 'u', 's'].includes(k)) ||
+        (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(k)) ||
+        e.key === 'F12'
+      ) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+    function blockDrag(e) { e.preventDefault() }
+
+    document.addEventListener('copy', blockCopy, true)
+    document.addEventListener('cut', blockCopy, true)
+    document.addEventListener('contextmenu', blockContext, true)
+    document.addEventListener('keydown', blockKeys, true)
+    document.addEventListener('dragstart', blockDrag, true)
+    document.addEventListener('selectstart', blockCopy, true)
+
+    return () => {
+      document.removeEventListener('copy', blockCopy, true)
+      document.removeEventListener('cut', blockCopy, true)
+      document.removeEventListener('contextmenu', blockContext, true)
+      document.removeEventListener('keydown', blockKeys, true)
+      document.removeEventListener('dragstart', blockDrag, true)
+      document.removeEventListener('selectstart', blockCopy, true)
+    }
+  }, [])
+
+  function handleRetry() {
+    setAnswers({})
+    setTimeLeft(quiz.timeLimit || 30)
+    setError('')
+    setShaking(false)
+  }
+
+  function handleAnswerChange(questionId, value) {
+    setAnswers((prev) => ({ ...prev, [questionId]: value }))
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (timeLeft <= 0 || submitting) return
+
+    setSubmitting(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/quiz/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers })
+      })
+      const data = await res.json()
+
+      if (data.valid) {
+        sessionStorage.setItem('quizPassed', '1')
+        onPass()
+      } else {
+        setError(data.error || 'Sai rồi! Bạn có thật sự là fan của 14 Casper không? 🤔')
+        setShaking(true)
+        setTimeout(() => setShaking(false), 500)
+      }
+    } catch {
+      setError('Lỗi kết nối máy chủ. Vui lòng thử lại!')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const expired = timeLeft <= 0
+  const maxTime = quiz.timeLimit || 30
+  const questions = quiz.questions || []
+  const isAllAnswered = questions.length > 0 && questions.every((q) => {
+    const val = answers[q.id]
+    return typeof val === 'string' && val.trim().length > 0
+  })
+
+  return (
+    <div className="quiz-gate">
+      <div className={'quiz-card' + (shaking ? ' quiz-shake' : '')}>
+        <h1 className="quiz-title">{quiz.title || '🔒 Em là ai?'}</h1>
+        <p className="quiz-subtitle">{quiz.subtitle || 'Trả lời đúng các câu hỏi để vào trang nhé!'}</p>
+
+        <div className="quiz-timer-bar">
+          <div
+            className={'quiz-timer-fill' + (timeLeft <= 10 ? ' quiz-timer-danger' : '')}
+            style={{ width: `${Math.max(0, (timeLeft / maxTime) * 100)}%` }}
+          />
+        </div>
+        <p className={'quiz-timer-text' + (timeLeft <= 10 ? ' quiz-timer-danger-text' : '')}>
+          ⏱ {timeLeft}s
+        </p>
+
+        {expired ? (
+          <div className="quiz-expired">
+            <p className="quiz-expired-text">⏰ Hết giờ rồi!</p>
+            <button type="button" className="quiz-retry-btn" onClick={handleRetry}>
+              Thử lại
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            {questions.map((q, idx) => (
+              <div key={q.id || idx} className="quiz-question">
+                <p className="quiz-q-label">Câu {idx + 1}:</p>
+                <p className="quiz-q-text">
+                  {q.question}
+                  {q.hint && <span className="quiz-hint"> {q.hint}</span>}
+                </p>
+
+                {q.type === 'choice' && Array.isArray(q.options) && (
+                  <div className="quiz-options">
+                    {q.options.map((opt) => (
+                      <button
+                        key={opt.value + opt.label}
+                        type="button"
+                        className={'quiz-option' + (answers[q.id] === opt.value ? ' quiz-option-selected' : '')}
+                        onClick={() => handleAnswerChange(q.id, opt.value)}
+                      >
+                        <span className="quiz-option-label">{opt.label}.</span>
+                        {opt.text}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {q.type === 'text' && (
+                  <input
+                    type="text"
+                    className="quiz-input"
+                    placeholder={q.placeholder || 'Nhập câu trả lời...'}
+                    value={answers[q.id] || ''}
+                    onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                    maxLength={100}
+                  />
+                )}
+              </div>
+            ))}
+
+            {error && <p className="quiz-error">{error}</p>}
+
+            <button
+              type="submit"
+              className="quiz-submit-btn"
+              disabled={!isAllAnswered || submitting}
+            >
+              {submitting ? 'Đang kiểm tra...' : 'Xác nhận'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
+  const [quizPassed, setQuizPassed] = useState(() => sessionStorage.getItem('quizPassed') === '1')
   const [page, setPage] = useState('notes')
   const [view, setView] = useState('list')
   const [notes, setNotes] = useState([])
@@ -877,6 +1426,10 @@ export default function App() {
       setView('list')
     })
     setPage(nextPage)
+  }
+
+  if (!quizPassed) {
+    return <QuizGate onPass={() => setQuizPassed(true)} />
   }
 
   return (
