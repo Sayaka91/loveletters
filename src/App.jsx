@@ -192,24 +192,53 @@ function seededRandom(seed) {
   return ((h >>> 0) % 100000) / 100000
 }
 
-function NoteScatterCard({ note, index, total, onClick, leaving }) {
-  const rLeft = seededRandom(note.id + ':left')
-  const rTop = seededRandom(note.id + ':top')
+// Halton low-discrepancy sequence: the n-th point in base `base`, used to
+// spread notes evenly across the board. Unlike per-note independent random
+// coordinates (which can clump together purely by chance, especially with
+// only a handful of notes), every prefix of a Halton sequence — the first
+// note, the first two, the first three, and so on — stays well spread out
+// on its own, regardless of how many notes end up on screen.
+function halton(index, base) {
+  let result = 0
+  let f = 1 / base
+  let i = index
+  while (i > 0) {
+    result += f * (i % base)
+    i = Math.floor(i / base)
+    f /= base
+  }
+  return result
+}
+const SCATTER_JITTER = 0.06
+
+function clamp01(n) {
+  return Math.min(1, Math.max(0, n))
+}
+
+function NoteScatterCard({ note, index, total, onClick, leaving, rank }) {
+  // Halton point for this note's rank, nudged by a small note-id-seeded
+  // jitter so cards don't look like they're sitting on a rigid sequence.
+  // `rank` is the note's stable position among *all* of today's notes,
+  // oldest-first (see NoteListView) — not `index` (its position among
+  // just the currently-visible ones) — so a note's spot on the board
+  // doesn't shift when an earlier note is hidden, or jump for every note
+  // when a new one arrives (oldest-first means a new note is appended
+  // after every existing rank instead of shifting them all up by one).
+  const rLeft = clamp01(halton(rank + 1, 2) + (seededRandom(note.id + ':left') - 0.5) * SCATTER_JITTER)
+  const rTop = clamp01(halton(rank + 1, 3) + (seededRandom(note.id + ':top') - 0.5) * SCATTER_JITTER)
   const rotate = (seededRandom(note.id + ':rot') * 16 - 8).toFixed(1)
   // Newest note (index 0) is fully opaque and on top; older notes fade and
   // sit further back in the stack.
   const opacity = Math.max(0.3, 1 - index * 0.12)
   const zIndex = total - index
 
-  // calc() keeps the card within [2%, 98%] of the container regardless of
-  // viewport size, since --card-w/--card-h (fixed px, overridden per
-  // breakpoint in CSS) are subtracted before scaling by the percentage.
-  // The rotation (up to ±8deg) enlarges the card's actual on-screen
-  // bounding box beyond its own width/height — cos(8deg)+sin(8deg) ≈
-  // 1.13 — so a 1.15x safety factor is applied to the reserved size to
-  // keep the rotated box from poking past the container edge.
-  const left = `calc(2% + ${rLeft.toFixed(4)} * (96% - var(--card-w) * 1.15))`
-  const top = `calc(2% + ${rTop.toFixed(4)} * (96% - var(--card-h) * 1.15))`
+  // rLeft/rTop place the CARD'S CENTER anywhere from 0% to 100% of the
+  // container — including right up to the true edge — instead of keeping
+  // the whole card inside a safety-margined box. A card whose center lands
+  // near an edge simply hangs off it; .notes-stage clips the overflow
+  // (`overflow: hidden`), so only the part still over the photo is shown.
+  const left = `calc(${(rLeft * 100).toFixed(2)}% - var(--card-w) / 2)`
+  const top = `calc(${(rTop * 100).toFixed(2)}% - var(--card-h) / 2)`
 
   return (
     <div
@@ -565,10 +594,18 @@ function NoteListView({ notes, error, onAddClick, loaded, readNoteIds, onNoteRea
   const todayKey = formatDateKey(Date.now())
   const [selectedDate, setSelectedDate] = useState(todayKey)
   const maxVisibleNotes = useMaxVisibleNotes()
-  const visibleNotes = notes
-    .filter((note) => formatDateKey(note.createdAt) === selectedDate)
-    .filter((note) => !readNoteIds.has(note.id))
-    .slice(0, maxVisibleNotes)
+  const todaysNotes = notes.filter((note) => formatDateKey(note.createdAt) === selectedDate)
+  const visibleNotes = todaysNotes.filter((note) => !readNoteIds.has(note.id)).slice(0, maxVisibleNotes)
+
+  // Each note's scatter position is keyed off its rank here, oldest-first
+  // among *all* of today's notes (not just the currently-visible ones) —
+  // so hiding a note doesn't reshuffle where the others sit, and a brand
+  // new note (always the newest) only ever gets appended a rank, instead
+  // of bumping every existing note's rank/position up by one the way
+  // sorting newest-first would.
+  const rankById = new Map(
+    [...todaysNotes].sort((a, b) => a.createdAt - b.createdAt).map((note, i) => [note.id, i])
+  )
 
   // Plays the overlay's fade-out and the scatter card's shrink-out at the
   // same time, then hides the note for the rest of this browser session
@@ -639,6 +676,7 @@ function NoteListView({ notes, error, onAddClick, loaded, readNoteIds, onNoteRea
                 total={visibleNotes.length}
                 onClick={setExpandedNote}
                 leaving={note.id === leavingId}
+                rank={rankById.get(note.id)}
               />
             ))}
           </div>

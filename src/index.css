@@ -385,6 +385,11 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Clips scatter-cards whose center sits near an edge and so hang off it
+     (see NoteScatterCard) — same radius as .bg-slideshow so a clipped
+     card's corner never pokes out past the photo's own rounded corner. */
+  border-radius: 16px;
+  overflow: hidden;
 }
 
 .bg-slideshow {
