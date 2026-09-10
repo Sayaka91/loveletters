@@ -8,7 +8,11 @@ const BG_IMAGES = Object.entries(
 )
   .sort(([a], [b]) => a.localeCompare(b))
   .map(([, url]) => url)
-const MAX_VISIBLE_NOTES = 99
+// Same breakpoint as the .scatter-card mobile sizing in index.css, so the
+// note count and card size shrink together.
+const MOBILE_BREAKPOINT_PX = 600
+const MAX_VISIBLE_NOTES_MOBILE = 30
+const MAX_VISIBLE_NOTES_DESKTOP = 99
 
 // Elapsed time from note creation to now, e.g. "5m", "1h", "1h30m".
 function formatElapsed(createdAtMs) {
@@ -49,6 +53,27 @@ function formatTopicElapsed(createdAtMs) {
   const days = Math.floor(totalMinutes / 1440)
   if (days >= 1) return `${days}d trước`
   return `${formatElapsed(createdAtMs)} trước`
+}
+
+// How many notes to scatter on screen at once — fewer on phones, where the
+// full 99 makes the board feel cluttered. Re-evaluates on resize/rotate via
+// the same 600px breakpoint the scatter-card CSS uses, so both shrink
+// together instead of the note count and card size disagreeing.
+function useMaxVisibleNotes() {
+  const getValue = () =>
+    window.innerWidth <= MOBILE_BREAKPOINT_PX ? MAX_VISIBLE_NOTES_MOBILE : MAX_VISIBLE_NOTES_DESKTOP
+  const [maxVisible, setMaxVisible] = useState(getValue)
+
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX}px)`)
+    function handleChange() {
+      setMaxVisible(getValue())
+    }
+    mql.addEventListener('change', handleChange)
+    return () => mql.removeEventListener('change', handleChange)
+  }, [])
+
+  return maxVisible
 }
 
 // Monochrome shuffle icon — inherits `color` so it stays on-theme (blue/white)
@@ -167,7 +192,7 @@ function seededRandom(seed) {
   return ((h >>> 0) % 100000) / 100000
 }
 
-function NoteScatterCard({ note, index, total, onClick }) {
+function NoteScatterCard({ note, index, total, onClick, leaving }) {
   const rLeft = seededRandom(note.id + ':left')
   const rTop = seededRandom(note.id + ':top')
   const rotate = (seededRandom(note.id + ':rot') * 16 - 8).toFixed(1)
@@ -188,7 +213,7 @@ function NoteScatterCard({ note, index, total, onClick }) {
 
   return (
     <div
-      className="scatter-card"
+      className={'scatter-card' + (leaving ? ' scatter-card-leaving' : '')}
       style={{ left, top, transform: `rotate(${rotate}deg)`, opacity, zIndex }}
       onClick={(e) => {
         e.stopPropagation()
@@ -530,27 +555,38 @@ function ConfessionPage({ onBack, pushScreen }) {
   )
 }
 
-function NoteListView({ notes, error, onAddClick, loaded }) {
+function NoteListView({ notes, error, onAddClick, loaded, readNoteIds, onNoteRead }) {
   const [displayMode, setDisplayMode] = useState('scatter')
   const [expandedNote, setExpandedNote] = useState(null)
   const [overlayClosing, setOverlayClosing] = useState(false)
+  const [leavingId, setLeavingId] = useState(null)
   const [bgIndex, setBgIndex] = useState(0)
   const [notesHidden, setNotesHidden] = useState(false)
   const todayKey = formatDateKey(Date.now())
   const [selectedDate, setSelectedDate] = useState(todayKey)
+  const maxVisibleNotes = useMaxVisibleNotes()
   const visibleNotes = notes
     .filter((note) => formatDateKey(note.createdAt) === selectedDate)
-    .slice(0, MAX_VISIBLE_NOTES)
+    .filter((note) => !readNoteIds.has(note.id))
+    .slice(0, maxVisibleNotes)
 
-  // Plays the overlay's fade-out before actually unmounting it, instead of
-  // it vanishing instantly.
+  // Plays the overlay's fade-out and the scatter card's shrink-out at the
+  // same time, then hides the note for the rest of this browser session
+  // (readNoteIds, reset on reload) only once the card's animation has
+  // actually finished — instead of both vanishing instantly.
   function closeExpandedNote() {
-    if (!expandedNote) return
+    const note = expandedNote
+    if (!note) return
     setOverlayClosing(true)
+    setLeavingId(note.id)
     setTimeout(() => {
       setExpandedNote(null)
       setOverlayClosing(false)
     }, 200)
+    setTimeout(() => {
+      onNoteRead(note.id)
+      setLeavingId((id) => (id === note.id ? null : id))
+    }, 320)
   }
 
   function handleAdvanceBg() {
@@ -602,6 +638,7 @@ function NoteListView({ notes, error, onAddClick, loaded }) {
                 index={index}
                 total={visibleNotes.length}
                 onClick={setExpandedNote}
+                leaving={note.id === leavingId}
               />
             ))}
           </div>
@@ -732,6 +769,13 @@ export default function App() {
   const [notes, setNotes] = useState([])
   const [notesLoaded, setNotesLoaded] = useState(false)
   const [error, setError] = useState('')
+  // Notes closed after viewing are hidden for the rest of this browser
+  // session only — never persisted, so a reload brings them all back.
+  const [readNoteIds, setReadNoteIds] = useState(() => new Set())
+
+  function markNoteRead(noteId) {
+    setReadNoteIds((ids) => new Set(ids).add(noteId))
+  }
   // Screens pushed onto browser history, deepest last. The phone/browser
   // back button fires 'popstate', which pops and runs whichever function
   // is on top — so back always returns to the previous in-app screen
@@ -815,6 +859,8 @@ export default function App() {
           notes={notes}
           error={error}
           loaded={notesLoaded}
+          readNoteIds={readNoteIds}
+          onNoteRead={markNoteRead}
           onAddClick={() => {
             pushScreen(() => setView('list'))
             setView('create')
