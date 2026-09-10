@@ -1350,7 +1350,9 @@ function QuizGate({ onPass }) {
 }
 
 export default function App() {
-  const [quizPassed, setQuizPassed] = useState(() => sessionStorage.getItem('quizPassed') === '1')
+  const [quizPassed, setQuizPassed] = useState(
+    () => import.meta.env.DEV || sessionStorage.getItem('quizPassed') === '1'
+  )
   const [page, setPage] = useState('notes')
   const [view, setView] = useState('list')
   const [notes, setNotes] = useState([])
