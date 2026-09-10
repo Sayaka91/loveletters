@@ -8,6 +8,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data')
 const NOTES_FILE = path.join(DATA_DIR, 'notes.json')
 const TOPICS_FILE = path.join(DATA_DIR, 'topics.json')
 const REPLIES_FILE = path.join(DATA_DIR, 'replies.json')
+const QUIZ_FILE = path.join(DATA_DIR, 'quiz.json')
 const MAX_CONTENT_LENGTH = 1000
 const MAX_AUTHOR_LENGTH = 50
 const REPLIES_PAGE_SIZE = 30
@@ -109,6 +110,63 @@ app.post('/api/topics/:id/replies', (req, res) => {
   replies.push(reply)
   writeJSON(REPLIES_FILE, replies)
   res.status(201).json(reply)
+})
+
+app.get('/api/quiz', (req, res) => {
+  try {
+    const quiz = readJSON(QUIZ_FILE)
+    const publicQuestions = (quiz.questions || []).map((q) => {
+      const { correctAnswer, ...rest } = q
+      return rest
+    })
+    res.json({
+      title: quiz.title || '🔒 Em là ai?',
+      subtitle: quiz.subtitle || 'Trả lời đúng các câu hỏi để vào trang nhé!',
+      timeLimit: quiz.timeLimit || 30,
+      questions: publicQuestions
+    })
+  } catch (err) {
+    res.status(500).json({ error: 'Không thể tải câu hỏi quiz' })
+  }
+})
+
+app.post('/api/quiz/verify', (req, res) => {
+  try {
+    const quiz = readJSON(QUIZ_FILE)
+    const { answers } = req.body || {}
+    if (!answers || typeof answers !== 'object') {
+      return res.status(400).json({ valid: false, error: 'Dữ liệu không hợp lệ' })
+    }
+
+    const questions = quiz.questions || []
+    let allCorrect = questions.length > 0
+
+    for (const q of questions) {
+      const userAns = answers[q.id]
+      if (typeof userAns !== 'string') {
+        allCorrect = false
+        break
+      }
+      const correct = String(q.correctAnswer || '').trim()
+      const provided = userAns.trim()
+
+      if (provided !== correct) {
+        allCorrect = false
+        break
+      }
+    }
+
+    if (allCorrect) {
+      res.json({ valid: true })
+    } else {
+      res.json({
+        valid: false,
+        error: quiz.errorMessage || 'Sai rồi! Bạn có thật sự là fan của 14 Casper không? 🤔'
+      })
+    }
+  } catch (err) {
+    res.status(500).json({ valid: false, error: 'Lỗi xác thực câu hỏi' })
+  }
 })
 
 const distPath = path.join(__dirname, '..', 'dist')
