@@ -274,38 +274,23 @@ body::before {
 .date-picker-icon-only.date-picker {
   width: 40px;
   padding: 0;
-}
-
-/* color:transparent alone doesn't hide these — the day/month/year fields
-   don't take their color from the input the way ordinary text does —
-   font-size:0 collapses them to nothing instead. */
-.date-picker-icon-only::-webkit-datetime-edit-fields-wrapper,
-.date-picker-icon-only::-webkit-datetime-edit-text,
-.date-picker-icon-only::-webkit-datetime-edit-day-field,
-.date-picker-icon-only::-webkit-datetime-edit-month-field,
-.date-picker-icon-only::-webkit-datetime-edit-year-field {
-  font-size: 0;
-}
-
-/* The glyph shown is CalendarIcon (App.jsx), centered here with ordinary
-   flexbox, rather than the real ::-webkit-calendar-picker-indicator —
-   that pseudo-element's own position (regardless of background-position,
-   which only places the glyph *within* its box) is set by each browser's
-   internal layout once the date text next to it is hidden, and isn't
-   reliably centered by any standard means. The real input (and its real
-   indicator) stays underneath, fully clickable/functional — just made
-   invisible so only the overlay glyph shows. */
-.date-picker-icon-only::-webkit-calendar-picker-indicator {
   opacity: 0;
 }
 
+/* The real input is fully transparent (opacity:0 above), so this is what
+   actually renders the "button" look — same white circle + shadow as
+   .all-btn, so it reads as one of the row's icon buttons instead of a
+   bare glyph floating with no chrome. */
 .date-picker-icon-overlay {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #fff;
   color: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 3px 10px rgba(var(--accent-shadow), 0.22);
   pointer-events: none;
 }
 
