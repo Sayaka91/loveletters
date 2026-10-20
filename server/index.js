@@ -35,7 +35,17 @@ const app = express()
 app.use(express.json())
 
 app.get('/api/notes', (req, res) => {
-  const notes = readJSON(NOTES_FILE).sort((a, b) => b.createdAt - a.createdAt)
+  let notes = readJSON(NOTES_FILE).sort((a, b) => b.createdAt - a.createdAt)
+  // Same optional [from, to) range as api/notes.js.
+  const { from, to } = req.query
+  if (from || to) {
+    const fromMs = Date.parse(from)
+    const toMs = Date.parse(to)
+    if (Number.isNaN(fromMs) || Number.isNaN(toMs)) {
+      return res.status(400).json({ error: 'from and to must be valid dates' })
+    }
+    notes = notes.filter((note) => note.createdAt >= fromMs && note.createdAt < toMs)
+  }
   res.json(notes)
 })
 
