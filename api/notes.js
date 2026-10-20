@@ -18,11 +18,6 @@ function toApiNote(row) {
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    // The app polls this every 5s per open tab, and each uncached poll is a
-    // Function invocation billed as Fast Origin Transfer — a short edge
-    // cache lets tabs viewing the same day share one response.
-    res.setHeader('Cache-Control', 's-maxage=5, stale-while-revalidate=25')
-
     // The client only ever shows one calendar day, so it passes that day's
     // [from, to) range instead of downloading every note ever written on
     // each poll. Without a range (e.g. a tab still running the old bundle
@@ -40,6 +35,11 @@ export default async function handler(req, res) {
     }
     const { data, error } = await query
     if (error) return res.status(500).json({ error: error.message })
+    // The app polls this every 5s per open tab, and each uncached poll is a
+    // Function invocation billed as Fast Origin Transfer — a short edge
+    // cache lets tabs viewing the same day share one response. Set only on
+    // success so an error is never what gets cached.
+    res.setHeader('Cache-Control', 's-maxage=5, stale-while-revalidate=25')
     return res.status(200).json(data.map(toApiNote))
   }
 

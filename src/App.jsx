@@ -1201,7 +1201,7 @@ function NoteCreateView({ onCancel, onCreated }) {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || 'HTTP ' + res.status)
       }
-      onCreated()
+      onCreated(await res.json())
     } catch (err) {
       setError('Gửi note thất bại: ' + err.message)
       setSubmitting(false)
@@ -1491,6 +1491,10 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState(() => formatDateKey(Date.now()))
   const selectedDateRef = useRef(selectedDate)
   selectedDateRef.current = selectedDate
+  // Notes this tab just posted. /api/notes is edge-cached for a few
+  // seconds, so a poll right after posting can still get the list from
+  // before the post — these are merged in until a fetched list has them.
+  const postedNotesRef = useRef([])
   const showingNoteList = page !== 'confession' && view !== 'create'
   const [error, setError] = useState('')
   // Notes closed after viewing are hidden for the rest of this browser
@@ -1522,27 +1526,28 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
-  // `fresh` skips the edge cache (a unique query string is a cache miss),
-  // so a note that was just posted shows up right away instead of after
-  // the cached list expires.
-  const loadNotes = useCallback(async ({ fresh = false } = {}) => {
+  const loadNotes = useCallback(async () => {
     const date = selectedDate
     const { from, to } = dayRange(date)
-    const params = new URLSearchParams({ from, to })
-    if (fresh) params.set('t', Date.now())
+    // Switched to another day while this was in flight — drop the result
+    // rather than overwrite (or mark loaded) that day's notes with this one's.
+    const isCurrent = () => selectedDateRef.current === date
     try {
-      const res = await fetch(`/api/notes?${params}`)
+      const res = await fetch(`/api/notes?${new URLSearchParams({ from, to })}`)
       if (!res.ok) throw new Error('HTTP ' + res.status)
       const data = await res.json()
-      // Switched to another day while this was in flight — drop it rather
-      // than overwrite that day's notes with this one's.
-      if (selectedDateRef.current !== date) return
-      setNotes(data)
+      if (!isCurrent()) return
+      const fetchedIds = new Set(data.map((note) => note.id))
+      postedNotesRef.current = postedNotesRef.current.filter((note) => !fetchedIds.has(note.id))
+      const fromMs = Date.parse(from)
+      const toMs = Date.parse(to)
+      const missing = postedNotesRef.current.filter((note) => note.createdAt >= fromMs && note.createdAt < toMs)
+      setNotes(missing.length ? [...missing, ...data].sort((a, b) => b.createdAt - a.createdAt) : data)
       setError('')
     } catch (err) {
-      setError('Không tải được note: ' + err.message)
+      if (isCurrent()) setError('Không tải được note: ' + err.message)
     } finally {
-      setNotesLoaded(true)
+      if (isCurrent()) setNotesLoaded(true)
     }
   }, [selectedDate])
 
@@ -1551,6 +1556,9 @@ export default function App() {
   // showing a 0 count for it.
   const selectDate = useCallback((date) => {
     if (date === selectedDateRef.current) return
+    // Updated right away (not just on the next render) so a request for the
+    // old day finishing in between is already seen as stale.
+    selectedDateRef.current = date
     setSelectedDate(date)
     setNotes([])
     setNotesLoaded(false)
@@ -1605,8 +1613,9 @@ export default function App() {
       ) : view === 'create' ? (
         <NoteCreateView
           onCancel={() => window.history.back()}
-          onCreated={async () => {
-            await loadNotes({ fresh: true })
+          onCreated={async (note) => {
+            postedNotesRef.current.push(note)
+            await loadNotes()
             window.history.back()
           }}
         />
