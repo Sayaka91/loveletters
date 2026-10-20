@@ -12,6 +12,7 @@ const QUIZ_FILE = path.join(DATA_DIR, 'quiz.json')
 const MAX_CONTENT_LENGTH = 1000
 const MAX_AUTHOR_LENGTH = 50
 const REPLIES_PAGE_SIZE = 30
+const MAX_NOTES_RANGE_MS = 48 * 60 * 60 * 1000
 
 function ensureDataFile(file) {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })
@@ -36,15 +37,24 @@ app.use(express.json())
 
 app.get('/api/notes', (req, res) => {
   let notes = readJSON(NOTES_FILE).sort((a, b) => b.createdAt - a.createdAt)
-  // Same optional [from, to) range as api/notes.js.
-  const { from, to } = req.query
+  // Same from/to/since rules as api/notes.js.
+  const { from, to, since } = req.query
   if (from || to) {
     const fromMs = Date.parse(from)
     const toMs = Date.parse(to)
-    if (Number.isNaN(fromMs) || Number.isNaN(toMs)) {
-      return res.status(400).json({ error: 'from and to must be valid dates' })
+    if (Number.isNaN(fromMs) || Number.isNaN(toMs) || toMs <= fromMs || toMs - fromMs > MAX_NOTES_RANGE_MS) {
+      return res.status(400).json({ error: 'from and to must be valid dates at most 48h apart' })
     }
     notes = notes.filter((note) => note.createdAt >= fromMs && note.createdAt < toMs)
+  } else {
+    notes = notes.filter((note) => note.createdAt >= Date.now() - MAX_NOTES_RANGE_MS)
+  }
+  if (since !== undefined) {
+    const sinceMs = Date.parse(since)
+    if (Number.isNaN(sinceMs)) {
+      return res.status(400).json({ error: 'since must be a valid date' })
+    }
+    notes = notes.filter((note) => note.createdAt >= sinceMs)
   }
   res.json(notes)
 })

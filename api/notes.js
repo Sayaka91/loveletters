@@ -2,6 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 
 const MAX_CONTENT_LENGTH = 1000
 const MAX_AUTHOR_LENGTH = 50
+// Longest [from, to) a GET may ask for — a local calendar day is 23–25h, so
+// 48h always fits one, while nobody can pull the whole table in one request.
+const MAX_RANGE_MS = 48 * 60 * 60 * 1000
 
 // service_role key bypasses RLS — only ever used here, server-side, never
 // sent to the browser. Keep RLS enabled with no public policies on `notes`.
@@ -19,19 +22,34 @@ function toApiNote(row) {
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     // The client only ever shows one calendar day, so it passes that day's
-    // [from, to) range instead of downloading every note ever written on
-    // each poll. Without a range (e.g. a tab still running the old bundle
-    // right after a deploy) it falls back to returning everything.
-    const { from, to } = req.query
+    // [from, to) range instead of downloading every note ever written. Its
+    // 5s polls also pass `since` (the newest note it already has), so most
+    // polls return nothing instead of the whole day again. Without a range
+    // (a tab still running an older bundle, which only needs today) it gets
+    // the last MAX_RANGE_MS.
+    const { from, to, since } = req.query
     let query = supabase
       .from('notes')
       .select('id, author, content, created_at')
       .order('created_at', { ascending: false })
     if (from || to) {
-      if (Number.isNaN(Date.parse(from)) || Number.isNaN(Date.parse(to))) {
-        return res.status(400).json({ error: 'from and to must be valid dates' })
+      const fromMs = Date.parse(from)
+      const toMs = Date.parse(to)
+      if (Number.isNaN(fromMs) || Number.isNaN(toMs) || toMs <= fromMs || toMs - fromMs > MAX_RANGE_MS) {
+        return res.status(400).json({ error: 'from and to must be valid dates at most 48h apart' })
       }
       query = query.gte('created_at', from).lt('created_at', to)
+    } else {
+      query = query.gte('created_at', new Date(Date.now() - MAX_RANGE_MS).toISOString())
+    }
+    if (since !== undefined) {
+      if (Number.isNaN(Date.parse(since))) {
+        return res.status(400).json({ error: 'since must be a valid date' })
+      }
+      // gte, not gt: API timestamps are whole milliseconds while created_at
+      // keeps microseconds, so the client's newest note comes back again
+      // (it dedupes by id) — gt could skip a note posted in that same ms.
+      query = query.gte('created_at', since)
     }
     const { data, error } = await query
     if (error) return res.status(500).json({ error: error.message })

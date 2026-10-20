@@ -44,14 +44,46 @@ function dayRange(dateKey) {
   return { from: start.toISOString(), to: end.toISOString() }
 }
 
+// Polling also pauses once nobody has touched the page for this long, so a
+// screen left open on the site all day stops paying for updates too.
+const IDLE_AFTER_MS = 10 * 60 * 1000
+// Kept current by useActivityTracking.
+let lastActivityAt = Date.now()
+
 // Wraps a polling callback so its ticks are skipped while the tab is in the
-// background — every poll is a Vercel Function call billed as Fast Origin
-// Transfer, and a tab left open but unseen would otherwise keep paying for
-// updates nobody looks at. The next tick after the tab comes back catches up.
-function whenVisible(poll) {
+// background or idle — every poll is a Vercel Function call billed as Fast
+// Origin Transfer, and a tab left open but unseen would otherwise keep
+// paying for updates nobody looks at. The next tick after the tab comes
+// back (or the user touches the page again) catches up.
+function whenActive(poll) {
   return () => {
-    if (!document.hidden) poll()
+    if (!document.hidden && Date.now() - lastActivityAt < IDLE_AFTER_MS) poll()
   }
+}
+
+// Records the last time the user interacted with the page, for whenActive.
+// Listens in the capture phase so scrolls inside inner elements count too,
+// and treats coming back to the tab as activity.
+function useActivityTracking() {
+  useEffect(() => {
+    const events = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll']
+    function markActive() {
+      lastActivityAt = Date.now()
+    }
+    function handleVisibilityChange() {
+      if (!document.hidden) markActive()
+    }
+    for (const type of events) {
+      document.addEventListener(type, markActive, { capture: true, passive: true })
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      for (const type of events) {
+        document.removeEventListener(type, markActive, { capture: true })
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 }
 
 // Clock time for a note's creation, e.g. "09:05", "23:41".
@@ -859,7 +891,7 @@ function ConfessionPage({ onBack, pushScreen }) {
   useEffect(() => {
     loadTopics()
     if (view !== 'list') return
-    const interval = setInterval(whenVisible(loadTopics), POLL_INTERVAL_MS)
+    const interval = setInterval(whenActive(loadTopics), POLL_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [loadTopics, view])
 
@@ -867,7 +899,7 @@ function ConfessionPage({ onBack, pushScreen }) {
     if (view !== 'detail' || !selectedTopic) return
     loadReplies(selectedTopic.id, repliesPage)
     const interval = setInterval(
-      whenVisible(() => loadReplies(selectedTopic.id, repliesPage)),
+      whenActive(() => loadReplies(selectedTopic.id, repliesPage)),
       POLL_INTERVAL_MS
     )
     return () => clearInterval(interval)
@@ -1484,7 +1516,11 @@ export default function App() {
   )
   const [page, setPage] = useState('notes')
   const [view, setView] = useState('list')
+  useActivityTracking()
   const [notes, setNotes] = useState([])
+  // Latest notes for pollNotes, which runs from a timer.
+  const notesRef = useRef(notes)
+  notesRef.current = notes
   const [notesLoaded, setNotesLoaded] = useState(false)
   // Lives here rather than in NoteListView so loadNotes can fetch only the
   // day being viewed instead of every note ever written.
@@ -1551,6 +1587,37 @@ export default function App() {
     }
   }, [selectedDate])
 
+  // Asks only for notes at or after the newest one already on screen, so a
+  // poll costs about the same however many notes the day has — loadNotes
+  // fetches the whole day only when the day or screen changes. A note
+  // deleted from the database meanwhile stays on screen until then.
+  const pollNotes = useCallback(async () => {
+    const newest = notesRef.current.reduce((max, note) => Math.max(max, note.createdAt), -Infinity)
+    // Nothing to build on (an empty day, or the first load failed) — the
+    // whole day is just as cheap or needed anyway.
+    if (newest === -Infinity) return loadNotes()
+
+    const date = selectedDate
+    const { from, to } = dayRange(date)
+    const since = new Date(newest).toISOString()
+    try {
+      const res = await fetch(`/api/notes?${new URLSearchParams({ from, to, since })}`)
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      const data = await res.json()
+      if (selectedDateRef.current !== date) return
+      // `since` is inclusive, so the newest note already on screen comes
+      // back each time — only add the ones not seen yet.
+      setNotes((current) => {
+        const knownIds = new Set(current.map((note) => note.id))
+        const added = data.filter((note) => !knownIds.has(note.id))
+        return added.length ? [...added, ...current].sort((a, b) => b.createdAt - a.createdAt) : current
+      })
+      setError('')
+    } catch (err) {
+      if (selectedDateRef.current === date) setError('Không tải được note: ' + err.message)
+    }
+  }, [selectedDate, loadNotes])
+
   // The list now only holds the previously selected day's notes, so clear
   // it and show "Đang tải..." until the new day arrives instead of briefly
   // showing a 0 count for it.
@@ -1574,9 +1641,9 @@ export default function App() {
   useEffect(() => {
     loadNotes()
     if (page !== 'notes' || view !== 'list') return
-    const interval = setInterval(whenVisible(loadNotes), POLL_INTERVAL_MS)
+    const interval = setInterval(whenActive(pollNotes), POLL_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [loadNotes, page, view])
+  }, [loadNotes, pollNotes, page, view])
 
   // Clicking a nav item that's already active toggles back to the notes
   // home screen instead of doing nothing.
