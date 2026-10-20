@@ -18,10 +18,27 @@ function toApiNote(row) {
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const { data, error } = await supabase
+    // The app polls this every 5s per open tab, and each uncached poll is a
+    // Function invocation billed as Fast Origin Transfer — a short edge
+    // cache lets tabs viewing the same day share one response.
+    res.setHeader('Cache-Control', 's-maxage=5, stale-while-revalidate=25')
+
+    // The client only ever shows one calendar day, so it passes that day's
+    // [from, to) range instead of downloading every note ever written on
+    // each poll. Without a range (e.g. a tab still running the old bundle
+    // right after a deploy) it falls back to returning everything.
+    const { from, to } = req.query
+    let query = supabase
       .from('notes')
       .select('id, author, content, created_at')
       .order('created_at', { ascending: false })
+    if (from || to) {
+      if (Number.isNaN(Date.parse(from)) || Number.isNaN(Date.parse(to))) {
+        return res.status(400).json({ error: 'from and to must be valid dates' })
+      }
+      query = query.gte('created_at', from).lt('created_at', to)
+    }
+    const { data, error } = await query
     if (error) return res.status(500).json({ error: error.message })
     return res.status(200).json(data.map(toApiNote))
   }

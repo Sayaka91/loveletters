@@ -35,6 +35,25 @@ function formatDateKey(timestampMs) {
   return `${y}-${m}-${day}`
 }
 
+// [from, to) ISO timestamps spanning one local calendar day (a
+// formatDateKey key), for asking /api/notes for just that day's notes.
+function dayRange(dateKey) {
+  const start = new Date(`${dateKey}T00:00:00`)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 1)
+  return { from: start.toISOString(), to: end.toISOString() }
+}
+
+// Wraps a polling callback so its ticks are skipped while the tab is in the
+// background — every poll is a Vercel Function call billed as Fast Origin
+// Transfer, and a tab left open but unseen would otherwise keep paying for
+// updates nobody looks at. The next tick after the tab comes back catches up.
+function whenVisible(poll) {
+  return () => {
+    if (!document.hidden) poll()
+  }
+}
+
 // Clock time for a note's creation, e.g. "09:05", "23:41".
 function formatClockTime(createdAtMs) {
   if (!createdAtMs) return ''
@@ -840,14 +859,17 @@ function ConfessionPage({ onBack, pushScreen }) {
   useEffect(() => {
     loadTopics()
     if (view !== 'list') return
-    const interval = setInterval(loadTopics, POLL_INTERVAL_MS)
+    const interval = setInterval(whenVisible(loadTopics), POLL_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [loadTopics, view])
 
   useEffect(() => {
     if (view !== 'detail' || !selectedTopic) return
     loadReplies(selectedTopic.id, repliesPage)
-    const interval = setInterval(() => loadReplies(selectedTopic.id, repliesPage), POLL_INTERVAL_MS)
+    const interval = setInterval(
+      whenVisible(() => loadReplies(selectedTopic.id, repliesPage)),
+      POLL_INTERVAL_MS
+    )
     return () => clearInterval(interval)
   }, [loadReplies, view, selectedTopic, repliesPage])
 
@@ -905,7 +927,16 @@ function ConfessionPage({ onBack, pushScreen }) {
   )
 }
 
-function NoteListView({ notes, error, onAddClick, loaded, readNoteIds, onNoteRead }) {
+function NoteListView({
+  notes,
+  error,
+  onAddClick,
+  loaded,
+  readNoteIds,
+  onNoteRead,
+  selectedDate,
+  onSelectDate
+}) {
   const [displayMode, setDisplayMode] = useState('scatter')
   const [expandedNote, setExpandedNote] = useState(null)
   const [overlayClosing, setOverlayClosing] = useState(false)
@@ -914,7 +945,6 @@ function NoteListView({ notes, error, onAddClick, loaded, readNoteIds, onNoteRea
   const [notesHidden, setNotesHidden] = useState(false)
   const [interactionMode, setInteractionMode] = useState(null)
   const todayKey = formatDateKey(Date.now())
-  const [selectedDate, setSelectedDate] = useState(todayKey)
   const maxVisibleNotes = useMaxVisibleNotes()
   const actionsRef = useRef(null)
   const naturalActionsWidthRef = useRef(null)
@@ -1029,7 +1059,7 @@ function NoteListView({ notes, error, onAddClick, loaded, readNoteIds, onNoteRea
               className={'date-picker' + (dateIconOnly ? ' date-picker-icon-only' : '')}
               value={selectedDate}
               max={todayKey}
-              onChange={(e) => setSelectedDate(e.target.value || todayKey)}
+              onChange={(e) => onSelectDate(e.target.value || todayKey)}
               aria-label="Chọn ngày xem note"
             />
             {dateIconOnly && (
@@ -1456,6 +1486,12 @@ export default function App() {
   const [view, setView] = useState('list')
   const [notes, setNotes] = useState([])
   const [notesLoaded, setNotesLoaded] = useState(false)
+  // Lives here rather than in NoteListView so loadNotes can fetch only the
+  // day being viewed instead of every note ever written.
+  const [selectedDate, setSelectedDate] = useState(() => formatDateKey(Date.now()))
+  const selectedDateRef = useRef(selectedDate)
+  selectedDateRef.current = selectedDate
+  const showingNoteList = page !== 'confession' && view !== 'create'
   const [error, setError] = useState('')
   // Notes closed after viewing are hidden for the rest of this browser
   // session only — never persisted, so a reload brings them all back.
@@ -1486,23 +1522,51 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
-  const loadNotes = useCallback(async () => {
+  // `fresh` skips the edge cache (a unique query string is a cache miss),
+  // so a note that was just posted shows up right away instead of after
+  // the cached list expires.
+  const loadNotes = useCallback(async ({ fresh = false } = {}) => {
+    const date = selectedDate
+    const { from, to } = dayRange(date)
+    const params = new URLSearchParams({ from, to })
+    if (fresh) params.set('t', Date.now())
     try {
-      const res = await fetch('/api/notes')
+      const res = await fetch(`/api/notes?${params}`)
       if (!res.ok) throw new Error('HTTP ' + res.status)
-      setNotes(await res.json())
+      const data = await res.json()
+      // Switched to another day while this was in flight — drop it rather
+      // than overwrite that day's notes with this one's.
+      if (selectedDateRef.current !== date) return
+      setNotes(data)
       setError('')
     } catch (err) {
       setError('Không tải được note: ' + err.message)
     } finally {
       setNotesLoaded(true)
     }
+  }, [selectedDate])
+
+  // The list now only holds the previously selected day's notes, so clear
+  // it and show "Đang tải..." until the new day arrives instead of briefly
+  // showing a 0 count for it.
+  const selectDate = useCallback((date) => {
+    if (date === selectedDateRef.current) return
+    setSelectedDate(date)
+    setNotes([])
+    setNotesLoaded(false)
   }, [])
+
+  // NoteListView used to own the selected day, so leaving the list (writing
+  // a note, opening the confession page) and coming back reset it to today
+  // — keep that, so e.g. a just-posted note is on screen when you return.
+  useEffect(() => {
+    if (!showingNoteList) selectDate(formatDateKey(Date.now()))
+  }, [showingNoteList, selectDate])
 
   useEffect(() => {
     loadNotes()
     if (page !== 'notes' || view !== 'list') return
-    const interval = setInterval(loadNotes, POLL_INTERVAL_MS)
+    const interval = setInterval(whenVisible(loadNotes), POLL_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [loadNotes, page, view])
 
@@ -1542,7 +1606,7 @@ export default function App() {
         <NoteCreateView
           onCancel={() => window.history.back()}
           onCreated={async () => {
-            await loadNotes()
+            await loadNotes({ fresh: true })
             window.history.back()
           }}
         />
@@ -1553,6 +1617,8 @@ export default function App() {
           loaded={notesLoaded}
           readNoteIds={readNoteIds}
           onNoteRead={markNoteRead}
+          selectedDate={selectedDate}
+          onSelectDate={selectDate}
           onAddClick={() => {
             pushScreen(() => setView('list'))
             setView('create')
